@@ -1,0 +1,951 @@
+/* RESET */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: sans-serif;
+}
+
+/* BODY */
+body {
+  background: #f0f8ff;
+}
+
+/* HEADER */
+.header {
+  display: flex;
+  align-items: center;
+  background: #0077b6;
+  color: white;
+  padding: 12px 15px;
+}
+
+.header h1 {
+  font-size: 16px;
+  margin-left: 10px;
+}
+
+#menuToggle {
+  font-size: 20px;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+/* SIDEBAR */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: -250px;
+  width: 250px;
+  height: 100%;
+  background: #023e8a;
+  color: white;
+  transition: 0.3s;
+  padding-top: 60px;
+  z-index: 1000;
+}
+
+.sidebar.active {
+  left: 0;
+}
+
+.sidebar ul {
+  list-style: none;
+}
+
+.sidebar li {
+  padding: 15px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.sidebar li:hover {
+  background: #0077b6;
+}
+
+/* CONTENT */
+main {
+  padding: 20px;
+}
+
+.section {
+  display: none;
+}
+
+.section.active {
+  display: block;
+}
+
+/* ================= RECORDING ================= */
+
+.recording-section {
+  background: #eef6fb;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+/* SEARCH */
+.search-input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.search-input:focus {
+  border-color: #0077b6;
+  outline: none;
+}
+
+/* GRID KOLAM */
+#kolamContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+  margin-top: 10px;
+}
+
+/* BOX KOLAM */
+.kolam-box {
+  background: white;
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: 0.2s;
+}
+
+.kolam-box:hover {
+  transform: translateY(-3px);
+}
+
+/* HEADER BOX */
+.kolam-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.kolam-header strong {
+  color: #023e8a;
+}
+
+/* STATUS */
+.status {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: white;
+}
+
+.status.aktif {
+  background: #28a745;
+}
+
+.status.off {
+  background: #dc3545;
+}
+
+/* INFO */
+.kolam-info {
+  font-size: 13px;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+/* BUTTON (FIXED) */
+.kolam-box button {
+  margin-top: 8px;
+  padding: 8px;
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: white;
+  font-size: 13px;
+  background: linear-gradient(135deg, #00b4d8, #0077b6);
+}
+
+/* TAMBAH KOLAM */
+.tambah-kolam-box {
+  margin-top: 20px;
+  background: white;
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.tambah-kolam-box h3 {
+  margin-bottom: 10px;
+  color: #023e8a;
+}
+
+.tambah-kolam-box input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.tambah-kolam-box button {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #00b4d8, #0077b6);
+  color: white;
+  cursor: pointer;
+}
+
+/* MODAL (FIXED LAYER) */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 2000; /* 🔥 ini penting */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  margin: 80px auto;
+  width: 90%;
+  max-width: 400px;
+  border-radius: 12px;
+}
+
+.modal-content input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+/* ===== MODAL ===== */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 2000;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(3px);
+   /* 🔥 INI FIX UTAMA */
+  overflow-y: auto;
+}
+
+.modal-content {
+  background: white;
+  padding: 25px;
+  margin: 60px auto;
+  width: 90%;
+  max-width: 420px;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+/* TITLE */
+.modal-title {
+  margin-bottom: 15px;
+  color: #023e8a;
+}
+
+/* FORM */
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  transition: 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #0077b6;
+  outline: none;
+}
+
+/* BUTTON */
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.btn-primary {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #00b4d8, #0077b6);
+  color: white;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #ddd;
+  cursor: pointer;
+}
+.modal-content {
+  background: white;
+  padding: 25px;
+  margin: 40px auto;
+  width: 90%;
+  max-width: 420px;
+  border-radius: 16px;
+
+  /* 🔥 INI PENTING */
+  max-height: 90vh;
+  overflow-y: auto;
+}
+select {
+  max-height: 200px;
+}
+
+/* GRID */
+.data-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* BOX */
+.data-box {
+  padding: 10px;
+  border-radius: 10px;
+  text-align: center;
+  transition: 0.2s;
+}
+
+/* TEXT */
+.data-box small {
+  display: block;
+  font-size: 11px;
+  color: #555;
+}
+
+.data-box strong {
+  display: block;
+  font-size: 16px;
+  margin: 3px 0;
+}
+
+.data-box span {
+  font-size: 12px;
+}
+
+/* WARNA */
+.box-green {
+  background: #d8f3dc;
+  color: #2d6a4f;
+}
+
+.box-red {
+  background: #ffd6d6;
+  color: #b00020;
+}
+
+.box-gray {
+  background: #f1f1f1;
+  color: #555;
+}
+
+/* HOVER */
+.data-box:hover {
+  transform: scale(1.05);
+}
+
+.kapasitas {
+  font-size: 12px;
+  color: #555;
+  margin-top: 3px;
+}
+
+/* WRAPPER */
+.kolam-title {
+  display: flex;
+  flex-direction: column;
+}
+
+/* BOX KAPASITAS */
+.kapasitas-box {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #edf6f9;
+  display: inline-block;
+  width: fit-content;
+}
+
+/* LABEL */
+.kapasitas-label {
+  font-size: 10px;
+  color: #0077b6;
+  display: block;
+}
+
+/* VALUE */
+.kapasitas-value {
+  font-size: 13px;
+  font-weight: bold;
+  color: #023e8a;
+}
+
+/* HOVER EFFECT */
+.kapasitas-box:hover {
+  transform: scale(1.05);
+  transition: 0.2s;
+}
+
+.kolam-header {
+  align-items: center;
+}
+
+.populasi-box {
+  margin-top: 5px;
+  padding: 6px 10px;
+  background: #fff3cd;
+  color: #856404;
+  border-radius: 8px;
+  font-size: 12px;
+  display: inline-block;
+}
+
+.btn-group {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* MODAL KHUSUS EDIT */
+.edit-modal {
+  max-width: 400px;
+}
+
+/* SECTION */
+.form-section {
+  margin-bottom: 15px;
+}
+
+.form-section label {
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 5px;
+  display: block;
+}
+
+/* INPUT */
+.form-section input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+/* STATUS TOGGLE */
+.status-toggle {
+  display: flex;
+  gap: 10px;
+}
+
+.status-toggle button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background: #eee;
+}
+
+/* ACTIVE */
+.status-toggle button.active {
+  background: linear-gradient(135deg, #00b4d8, #0077b6);
+  color: white;
+}
+
+/* ACTION BUTTON */
+.btn-save {
+  flex: 1;
+  background: linear-gradient(135deg, #00b4d8, #0077b6);
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.btn-cancel {
+  flex: 1;
+  background: #eee;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.filter-box {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-box input {
+  flex: 1;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 11px;
+}
+
+.filter-box button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: #0077b6;
+  color: white;
+  font-size: 11px;
+}
+
+/* ================= PRINT MODAL ================= */
+
+.print-modal {
+  max-width: 400px;
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.modal-title {
+  text-align: center;
+  margin-bottom: 15px;
+  color: #023e8a;
+}
+
+/* FORM */
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  font-size: 12px;
+  color: #555;
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* INPUT */
+.input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  outline: none;
+  font-size: 13px;
+}
+
+.input:focus {
+  border-color: #0077b6;
+}
+
+/* RANGE BOX */
+.range-box {
+  display: none;
+}
+
+/* BUTTON */
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.btn-primary {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #00b4d8, #0077b6);
+  color: white;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #dee2e6;
+  cursor: pointer;
+}
+
+/* ===== EDIT MODAL ===== */
+.edit-modal {
+  max-width: 400px;
+  padding: 20px;
+  border-radius: 14px;
+}
+
+.modal-title {
+  text-align: center;
+  margin-bottom: 15px;
+  color: #023e8a;
+}
+
+/* FORM */
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 5px;
+  display: block;
+}
+
+/* INPUT */
+.input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.input:focus {
+  border-color: #0077b6;
+  outline: none;
+}
+
+/* BUTTON */
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.btn-primary {
+  flex: 1;
+  background: linear-gradient(135deg, #00b4d8, #0077b6);
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.btn-secondary {
+  flex: 1;
+  background: #dee2e6;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+#loadingOverlay {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+
+  display: none;
+
+  background: rgba(0,0,0,0.6);
+
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+
+  z-index: 999999 !important; /* 🔥 NAIKKAN */
+}
+
+.loader {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #ccc;
+  border-top: 4px solid #0077b6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+body {
+  position: relative;
+}
+
+/* 🔥 MODAL OVERLAY */
+.modal {
+  display: none;
+  position: fixed; /* WAJIB */
+  z-index: 9999; /* BIAR DI ATAS SEMUA */
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+
+  background: rgba(0,0,0,0.5);
+
+  justify-content: center;
+  align-items: center;
+}
+
+/* 🔥 ISI MODAL */
+.modal-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 16px;
+
+  width: 90%;
+  max-width: 400px;
+
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.checkbox-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.checkbox-container label {
+  background: #f1f1f1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.checkbox-container input {
+  margin-right: 5px;
+}
+
+/* GROUP BUTTON */
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+/* PRIMARY (TAMPILKAN) */
+.btn-primary {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #00b4d8, #0077b6);
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-primary:hover {
+  transform: scale(1.05);
+}
+
+/* SECONDARY */
+.btn-secondary {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #dee2e6;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #ced4da;
+}
+
+/* DOWNLOAD BUTTON */
+.btn-download {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #38b000, #2d6a4f);
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-download:hover {
+  transform: scale(1.05);
+}
+
+/* GRID MASTER */
+.lab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+/* CARD MASTER */
+.lab-card {
+  padding: 15px;
+  border-radius: 12px;
+  color: white;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.lab-card small {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.lab-card h2 {
+  margin: 5px 0 0;
+}
+
+/* WARNA */
+.lab-card.sr { background: #00b894; }
+.lab-card.mortalitas { background: #d63031; }
+.lab-card.fcr { background: #0984e3; }
+.lab-card.efisiensi { background: #6c5ce7; }
+
+/* PER KOLAM */
+.lab-kolam-card {
+  background: white;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+}
+
+.lab-header {
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+.lab-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.lab-item {
+  background: #f1f2f6;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* FILTER WRAPPER */
+.lab-filter {
+  display: flex;
+  align-items: end;
+  gap: 15px;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+
+/* GROUP INPUT */
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: #555;
+}
+
+.filter-group input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 13px;
+}
+
+/* BUTTON FILTER */
+.btn-filter {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 8px;
+  background: #0984e3;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btn-filter:hover {
+  background: #0767b3;
+}
+
+#labMaster {
+  margin-bottom: 25px;
+}
+
+#labKolam {
+  margin-top: 10px;
+}
+
+.lab-kolam-card {
+  margin-bottom: 20px;
+}
+
+.lab-item.green {
+  background: #d4edda;
+  color: #155724;
+}
+
+.lab-item.orange {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.lab-item.red {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.ranking-item {
+  display: flex;
+  justify-content: space-between;
+  background: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
