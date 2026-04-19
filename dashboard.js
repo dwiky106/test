@@ -3310,6 +3310,6 @@ function logout() {
   const auth = getAuth();
 
   signOut(auth).then(() => {
-    window.location.href = "dwiky106.github.io/test/index.html";
+    window.location.href = "/index.html";
   });
 }
