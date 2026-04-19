@@ -622,7 +622,7 @@
   // 🔥 PROTEKSI DASHBOARD
   firebase.auth().onAuthStateChanged(function(user) {
     if (!user) {
-      window.location.href = "/index.html";
+      window.location.href = "./index.html";
     } else {
       document.body.style.display = "block";
     }
@@ -631,7 +631,7 @@
   // 🔥 LOGOUT GLOBAL
   function logout() {
     firebase.auth().signOut().then(() => {
-      window.location.href = "/index.html";
+      window.location.href = "./index.html";
     });
   }
 </script>
