@@ -33,7 +33,7 @@ signInWithEmailAndPassword(auth, fakeEmail, password)
 
     localStorage.setItem("user", JSON.stringify(user));
 
-    window.location.href = "dashboard/dashboard.html";
+    window.location.href = "dashboard.html";
   })
   .catch((error) => {
     errorMsg.textContent = "ID atau password salah!";
