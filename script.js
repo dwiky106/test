@@ -41,7 +41,7 @@ form.addEventListener("submit", function(e) {
   // 🔥 LOGIN
   signInWithEmailAndPassword(auth, fakeEmail, password)
     .then(() => {
-      window.location.href = "dashboard/dashboard.html";
+      window.location.href = "dashboard.html";
     })
     .catch(() => {
       errorMsg.textContent = "ID atau password salah!";
