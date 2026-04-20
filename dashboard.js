@@ -1,0 +1,4134 @@
+
+// =======================
+// GLOBAL HELPER (WAJIB PALING ATAS)
+// =======================
+
+function showToast(message, type = "info") {
+  const toast = document.getElementById("toast");
+  if (!toast) return;
+
+  toast.innerText = message;
+  toast.className = "";
+  toast.classList.add(`toast-${type}`);
+
+  toast.style.display = "block";
+
+  setTimeout(() => {
+    toast.style.display = "none";
+  }, 1500);
+}
+
+function showLoading(text = "Memproses...") {
+
+  // 🔥 hapus kalau sudah ada
+  const old = document.getElementById("GLOBAL_LOADING");
+  if (old) old.remove();
+
+  // 🔥 buat baru
+  const el = document.createElement("div");
+  el.id = "GLOBAL_LOADING";
+
+  el.style.position = "fixed";
+  el.style.top = "0";
+  el.style.left = "0";
+  el.style.width = "100vw";
+  el.style.height = "100vh";
+  el.style.background = "rgba(0,0,0,0.8)";
+  el.style.zIndex = "999999";
+  el.style.display = "flex";
+  el.style.justifyContent = "center";
+  el.style.alignItems = "center";
+  el.style.flexDirection = "column";
+
+  el.innerHTML = `
+    <div style="
+      width:60px;
+      height:60px;
+      border:6px solid #ccc;
+      border-top:6px solid #00b4d8;
+      border-radius:50%;
+      animation: spin 1s linear infinite;
+    "></div>
+
+    <p style="color:white;margin-top:15px;font-size:16px;">
+      ${text}
+    </p>
+  `;
+
+  document.body.appendChild(el);
+  document.body.prepend(el); 
+}
+
+function hideLoading() {
+  const el = document.getElementById("GLOBAL_LOADING");
+  if (el) el.remove();
+}
+
+const originalFetch = window.fetch;
+
+window.fetch = async (...args) => {
+  showLoading("Memproses...");
+
+  try {
+    const res = await originalFetch(...args);
+    return res;
+  } finally {
+    hideLoading();
+  }
+};
+// =======================
+// CONFIG
+// =======================
+const POST_URL = "https://script.google.com/macros/s/AKfycbyiI2siSr_RHO5DCdlmWPRdw03Hk6Re3sWxwbCWWpTx3ZI4H-9Rpl7iOZ_FzadFAdoj/exec";
+
+const KOLAM_CSV = "https://docs.google.com/spreadsheets/d/1nOsnlFTh00jCF-RbwXyH2IHFgg-SRrbKKo3_y5JZDto/gviz/tq?tqx=out:csv&sheet=kolam";
+
+const RECORDING_CSV = "https://docs.google.com/spreadsheets/d/1nOsnlFTh00jCF-RbwXyH2IHFgg-SRrbKKo3_y5JZDto/gviz/tq?tqx=out:csv&sheet=recording";
+
+const STOK_PAKAN_CSV = "https://docs.google.com/spreadsheets/d/1nOsnlFTh00jCF-RbwXyH2IHFgg-SRrbKKo3_y5JZDto/gviz/tq?tqx=out:csv&sheet=stok_pakan";
+
+const LOG_PAKAN_CSV = "https://docs.google.com/spreadsheets/d/1nOsnlFTh00jCF-RbwXyH2IHFgg-SRrbKKo3_y5JZDto/gviz/tq?tqx=out:csv&sheet=log_pakan";
+
+const LOG_STOK_CSV = "https://docs.google.com/spreadsheets/d/1nOsnlFTh00jCF-RbwXyH2IHFgg-SRrbKKo3_y5JZDto/gviz/tq?tqx=out:csv&sheet=log_stok";
+
+const SAMPLING_CSV = "https://docs.google.com/spreadsheets/d/1nOsnlFTh00jCF-RbwXyH2IHFgg-SRrbKKo3_y5JZDto/export?format=csv&gid=1207157921";
+
+
+// =======================
+// STATE
+// =======================
+let searchKeyword = "";
+let chartInstances = {};
+let selectedJenisPakan = [];
+let datasetVisibility = {};
+let isDashboardLoading = false;
+let currentUser = null;
+let currentRole = "guest"; // 🔥 ini penting
+let isOpeningPrint = false;
+let isUserInteracting = false;
+let samplingData = [];
+let selectedKurasId = null;
+let selectedEditKolam = null;
+let selectedEditId = null;
+let kolamData = [];
+let selectedKolamId = null;
+let filterState = {};
+
+// =======================
+// INIT
+// =======================
+document.addEventListener("DOMContentLoaded", () => {
+
+  const container = document.getElementById("kolamContainer");
+  const searchInput = document.getElementById("searchKolam");
+  const menuToggle = document.getElementById("menuToggle");
+  const sidebar = document.getElementById("sidebar");
+  const menuItems = document.querySelectorAll(".sidebar li");
+  const sections = document.querySelectorAll(".section");
+  // 🔥 LOAD HALAMAN TERAKHIR
+const lastPage = localStorage.getItem("activeMenu");
+
+if (lastPage) {
+  sections.forEach(sec => sec.classList.remove("active"));
+  const target = document.getElementById(lastPage);
+  if (target) target.classList.add("active");
+  
+}
+
+  // NAVIGATION
+  menuToggle.addEventListener("click", () => {
+    sidebar.classList.toggle("active");
+  });
+
+menuItems.forEach(item => {
+  item.addEventListener("click", () => {
+
+    const target = item.getAttribute("data-section");
+
+    // 🔥 TAMBAHKAN INI
+    if (currentRole === "operator") {
+      if (target !== "dashboard" && target !== "recording") {
+        alert("Hanya Untuk Tim Manajemen");
+        return;
+      }
+    }
+
+    sections.forEach(sec => sec.classList.remove("active"));
+    document.getElementById(target).classList.add("active");
+
+    localStorage.setItem("activeSection", target);
+    
+        if (target === "dashboard") {
+  loadDashboardUtama();
+}
+
+    if (target === "pakan") {
+      loadPakanPage(); // 🔥 AUTO LOAD
+    }
+
+    if (target === "lab") {
+  loadLab();
+}
+
+if (target === "laporan") {
+  loadLaporanPage();
+}
+    
+    
+
+    sidebar.classList.remove("active");
+  });
+});
+
+  // SEARCH
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      renderKolam(container, searchInput.value);
+    });
+  }
+
+  // SUBMIT RECORDING
+  document.getElementById("submitRecording").onclick = async () => {
+
+    const suhu = document.getElementById("inputSuhu").value;
+    const ph = document.getElementById("inputPh").value;
+    const doAir = document.getElementById("inputDo").value;
+    const kematian = document.getElementById("inputKematian").value;
+    const jenis = document.getElementById("jenisPakan").value;
+    const pakanKg = parseFloat(document.getElementById("inputPakan").value) || 0;
+    const pakanGram = pakanKg * 1000;
+
+    if (!suhu || !ph || !doAir) {
+      alert("Isi data dengan benar!");
+      return;
+    }
+
+    if (!jenis) {
+      alert("Pilih jenis pakan!");
+      return;
+    }
+
+    const formData = new URLSearchParams();
+    formData.append("action", "recording");
+    formData.append("kolam_id", selectedKolamId);
+    formData.append("tanggal", new Date().toLocaleDateString("sv-SE"));
+    formData.append("suhu", suhu);
+    formData.append("ph", ph);
+    formData.append("do", doAir);
+    formData.append("kematian", kematian || 0);
+    formData.append("jenis_pakan", jenis);
+    formData.append("pakan", pakanGram);
+
+    try {
+      await fetch(POST_URL, {
+        method: "POST",
+        body: formData
+      });
+
+      showToast("Recording berhasil!", "success");
+
+      await loadStokPakan();
+      await loadPengeluaranPakan();
+      await loadKolamPakan();
+
+      closeModal();
+      loadKolam();
+
+    } catch (err) {
+      console.error("ERROR RECORDING:", err);
+      showToast("Gagal simpan recording!");
+    }
+  };
+
+  // LOAD DATA AWAL
+  loadKolam();
+  // 🔥 TARUH DI SINI (PALING BAWAH)
+  firebase.auth().onAuthStateChanged(user => {
+
+    if (!user) return;
+
+    currentUser = user;
+
+    const email = user.email || "";
+
+    if (email.endsWith("@app.com")) {
+      currentRole = "manajemen";
+    } else if (email.endsWith("@ops.com")) {
+      currentRole = "operator";
+    }
+
+    console.log("ROLE:", currentRole);
+
+    applyRoleUI(); // 🔥 penting
+  });
+});
+
+// =======================
+// TAMBAH KOLAM
+// =======================
+async function tambahKolam(nama, kapasitas) {
+
+  const formData = new URLSearchParams();
+  formData.append("action", "tambah_kolam");
+  formData.append("nama", nama);
+  formData.append("kapasitas", kapasitas);
+  formData.append("status", "aktif");
+
+  try {
+    await fetch(POST_URL, {
+      method: "POST",
+      body: formData
+    });
+
+    showToast("Kolam berhasil ditambahkan!");
+    loadKolam();
+
+  } catch (err) {
+    console.error("ERROR TAMBAH KOLAM:", err);
+    alert("Gagal tambah kolam!");
+  }
+}
+
+function submitKolam() {
+  if (currentRole !== "manajemen") {
+  alert("Hanya Untuk Tim Manajemen");
+  return;
+}
+  
+  const nama = document.getElementById("namaKolam").value;
+  const kapasitas = Number(document.getElementById("kapasitasKolam").value);
+
+  if (!nama || kapasitas <= 0) {
+    alert("Isi data dengan benar!");
+    return;
+  }
+
+  tambahKolam(nama, kapasitas);
+
+  document.getElementById("namaKolam").value = "";
+  document.getElementById("kapasitasKolam").value = "";
+}
+
+// =======================
+// LOAD KOLAM
+// =======================
+async function loadKolam() {
+  try {
+    const res = await fetch(KOLAM_CSV);
+    const text = await res.text();
+
+    const rows = text.trim().split("\n").map(r =>
+      r.replace(/"/g, "").split(",")
+    );
+
+    rows.shift();
+
+  kolamData = rows.map(row => ({
+  id: Number(row[0]),
+  nama: row[1],
+  kapasitas: Number(row[2]),
+  populasi: Number(row[3]),
+  status: row[4],
+  tanggal_masuk: row[5],
+  tanggal_panen: row[6],
+
+  // 🔥 GANTI DEFAULT
+  suhu: 0,
+  ph: 0,
+  do: 0,
+  kematian: 0
+}));
+
+    await loadRecording();
+
+const container = document.getElementById("kolamContainer");
+renderKolam(container);
+
+// 🔥 TAMBAHKAN INI
+  } catch (err) {
+    console.error("LOAD KOLAM ERROR:", err);
+  }
+}
+
+// =======================
+// LOAD perbandingan
+// =======================
+function hitungPerbandingan(last, prev) {
+  if (!prev || prev === 0) {
+    return {
+      status: "stabil",
+      persen: "0%"
+    };
+  }
+
+  const diff = last - prev;
+  const percent = ((diff / prev) * 100).toFixed(1);
+
+  if (diff > 0) {
+    return {
+      status: "naik",
+      persen: "+" + percent + "%"
+    };
+  } else if (diff < 0) {
+    return {
+      status: "turun",
+      persen: percent + "%"
+    };
+  } else {
+    return {
+      status: "stabil",
+      persen: "0%"
+    };
+  }
+}
+// =======================
+// LOAD RECORDING
+// =======================
+async function loadRecording() {
+  try {
+    const res = await fetch(RECORDING_CSV);
+    const text = await res.text();
+
+    if (!text || text.length < 10) return;
+
+    const rows = text.trim().split("\n").map(r =>
+      r.replace(/"/g, "").split(",")
+    );
+
+    rows.shift();
+
+    // kelompokkan per kolam
+    const grouped = {};
+
+    rows.forEach(row => {
+
+  const kolamId = Number(row[1]);
+  const tanggal = row[2];
+
+  // 🔥 AMBIL FILTER
+  const filter = filterState[kolamId];
+
+  // 🔥 FILTER DI SINI
+  if (!isInDateRange(tanggal, filter)) return;
+
+  if (!grouped[kolamId]) {
+    grouped[kolamId] = [];
+  }
+
+  grouped[kolamId].push({
+  suhu: isNaN(Number(row[3])) ? 0 : Number(row[3]),
+  ph: isNaN(Number(row[4])) ? 0 : Number(row[4]),
+  do: isNaN(Number(row[5])) ? 0 : Number(row[5]),
+  mati: isNaN(Number(row[6])) ? 0 : Number(row[6]),
+  tanggal: row[2]
+});
+});
+
+    // ambil data terbaru + sebelumnya
+    kolamData.forEach(async (k) => {
+      const data = grouped[k.id];
+
+      if (!data || data.length === 0) return;
+
+      const last = data[data.length - 1];
+      const prev = data[data.length - 2];
+
+      k.suhu = last.suhu;
+      k.ph = last.ph;
+      k.do = last.do;
+      k.mati = last.mati;
+      k.kematian = last.mati;
+
+      // 🔥 PERBANDINGAN SUHU
+if (prev) {
+
+  const suhuCompare = hitungPerbandingan(last.suhu, prev.suhu);
+  const phCompare = hitungPerbandingan(last.ph, prev.ph);
+  const doCompare = hitungPerbandingan(last.do, prev.do);
+  const matiCompare = hitungPerbandingan(last.mati, prev.mati);
+
+  k.suhu_status = suhuCompare.status;
+  k.suhu_persen = suhuCompare.persen;
+
+  k.ph_status = phCompare.status;
+  k.ph_persen = phCompare.persen;
+
+  k.do_status = doCompare.status;
+  k.do_persen = doCompare.persen;
+
+  k.kematian_status = matiCompare.status;
+  k.kematian_persen = matiCompare.persen;
+
+} else {
+  k.suhu_status = k.ph_status = k.do_status = k.kematian_status = "stabil";
+  k.suhu_persen = k.ph_persen = k.do_persen = k.kematian_persen = "0%";
+}
+    });
+
+  } catch (err) {
+    console.error("LOAD RECORDING ERROR:", err);
+  }
+}
+// =======================
+//render
+//
+function renderKolam(container, filter = "") {
+
+  container.innerHTML = "";
+
+  const data = kolamData.filter(k =>
+    k.nama.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  if (data.length === 0) {
+    container.innerHTML = "<p>Kolam tidak ditemukan</p>";
+    return;
+  }
+
+  data.forEach(k => {
+
+    const div = document.createElement("div");
+    div.className = "kolam-box";
+
+    // 🔥 tombol khusus manajemen
+    let actionButtons = "";
+
+    if (currentRole === "manajemen") {
+      actionButtons = `
+        <button onclick="editKolam(${k.id})">Edit Kolam</button>
+        <button onclick="openEditRecording(${k.id})">Edit Data</button>
+        <button onclick="openIkanMasuk(${k.id})">🐟 Masuk</button>
+        <button onclick="openPanen(${k.id})">📦 Panen</button>
+        <button onclick="openKuras(${k.id})">Kuras Kolam</button>
+      `;
+    }
+
+    div.innerHTML = `
+      
+      <div class="kolam-header">
+        <div class="kolam-title">
+          <strong>${k.nama}</strong>
+
+          <div class="kapasitas-box">
+            <span class="kapasitas-label">🐟 Tebar</span>
+            <span class="kapasitas-value">
+              ${k.kapasitas.toLocaleString()} ekor
+            </span>
+          </div>
+
+          <div class="populasi-box">
+            🐟 Populasi: ${(k.populasi || 0).toLocaleString()} ekor
+          </div>
+
+          <div>🐟 Umur: ${hitungUmur(k.tanggal_masuk, k.tanggal_panen)} hari</div>
+        </div>
+
+        <span class="status ${k.status}">
+          ${k.status}
+        </span>
+      </div>
+
+      <div class="filter-box">
+        <input type="date" id="start-${k.id}">
+        <input type="date" id="end-${k.id}">
+        <button onclick="applyFilter(${k.id})">Terapkan</button>
+      </div>
+
+      <div class="data-grid">
+
+        <div class="data-box ${getClass(k.suhu_status)}">
+          <small>Suhu</small>
+          <strong>${k.suhu}°C</strong>
+          <span>${getIcon(k.suhu_status)} ${k.suhu_persen}</span>
+        </div>
+
+        <div class="data-box ${getClass(k.ph_status)}">
+          <small>PH</small>
+          <strong>${k.ph}</strong>
+          <span>${getIcon(k.ph_status)} ${k.ph_persen}</span>
+        </div>
+
+        <div class="data-box ${getClass(k.do_status)}">
+          <small>DO</small>
+          <strong>${k.do}</strong>
+          <span>${getIcon(k.do_status)} ${k.do_persen}</span>
+        </div>
+
+        <div class="data-box ${getClass(k.kematian_status, "kematian")}">
+          <small>Mati</small>
+          <strong>${k.kematian}</strong>
+          <span>${getIcon(k.kematian_status)} ${k.kematian_persen}</span>
+        </div>
+
+      </div>
+
+      <!-- 🔥 RECORDING -->
+      <button 
+        onclick="${k.status === 'aktif' ? `openRecording(${k.id})` : ''}"
+        ${k.status !== 'aktif' ? 'disabled' : ''}
+      >
+        Recording
+      </button>
+
+      <!-- 🔥 CETAK -->
+      <button onclick="openPrint(${k.id})">Cetak</button>
+
+      <!-- 🔥 KHUSUS MANAJEMEN -->
+      ${actionButtons}
+
+    `;
+
+    container.appendChild(div);
+  });
+
+}
+
+// =======================
+// ACTION
+// =======================
+async function openRecording(id) {
+  selectedKolamId = id;
+
+  await loadMasterPakan();
+  renderDropdownPakan();
+
+  document.getElementById("modalRecording").style.display = "block";
+}
+
+function closeModal() {
+  document.getElementById("modalRecording").style.display = "none";
+}
+
+function getIcon(status) {
+  if (status === "naik") return "⬆️";
+  if (status === "turun") return "⬇️";
+  return "➖";
+}
+
+function getColor(status, type = "normal") {
+  if (type === "kematian") {
+    if (status === "naik") return "red";
+    if (status === "turun") return "green";
+    return "gray";
+  } else {
+    if (status === "naik") return "green";
+    if (status === "turun") return "red";
+    return "gray";
+  }
+}
+
+function getClass(status, type = "normal") {
+  if (type === "kematian") {
+    if (status === "naik") return "box-red";
+    if (status === "turun") return "box-green";
+    return "box-gray";
+  } else {
+    if (status === "naik") return "box-green";
+    if (status === "turun") return "box-red";
+    return "box-gray";
+  }
+}
+
+let editKolamId = null;
+
+function editKolam(id) {
+  if (currentRole !== "manajemen") {
+  alert("Hanya Untuk Tim Manajemen");
+  return;
+}
+
+  const kolam = kolamData.find(k => k.id === id);
+
+  if (!kolam) {
+    showToast("Kolam tidak ditemukan", "error");
+    return;
+  }
+
+  const nama = document.getElementById("editNama");
+  const kapasitas = document.getElementById("editKapasitas");
+  const status = document.getElementById("editStatus");
+
+  if (!nama || !kapasitas || !status) {
+    showToast("Form edit belum siap!", "error");
+    return;
+  }
+
+  nama.value = kolam.nama;
+  kapasitas.value = kolam.kapasitas;
+  status.value = kolam.status;
+
+  editKolamId = id; // 🔥 FIX PENTING
+
+  document.getElementById("modalEdit").style.display = "block"; // 🔥 FIX NAMA
+}
+
+function closeEdit() {
+  document.getElementById("modalEdit").style.display = "none";
+}
+
+async function submitEdit() {
+
+  const nama = document.getElementById("editNama").value;
+  const kapasitas = document.getElementById("editKapasitas").value;
+  const status = document.getElementById("editStatus").value; // 🔥 FIX
+
+  if (!nama || !kapasitas) {
+    showToast("Isi data dengan benar!", "info");
+    return;
+  }
+
+  const formData = new URLSearchParams();
+  formData.append("action", "edit_kolam");
+  formData.append("id", editKolamId);
+  formData.append("nama", nama);
+  formData.append("kapasitas", kapasitas);
+  formData.append("status", status);
+
+  try {
+    await fetch(POST_URL, {
+      method: "POST",
+      body: formData
+    });
+
+    showToast("Kolam berhasil diupdate", "success");
+
+    closeEdit();
+    loadKolam();
+
+  } catch (err) {
+    showToast("Gagal update kolam", "error");
+  }
+}
+
+let selectedStatus = "aktif";
+
+function setStatus(status) {
+  selectedStatus = status;
+
+  document.getElementById("btnAktif").classList.remove("active");
+  document.getElementById("btnOff").classList.remove("active");
+
+  if (status === "aktif") {
+    document.getElementById("btnAktif").classList.add("active");
+  } else {
+    document.getElementById("btnOff").classList.add("active");
+  }
+}
+
+function applyFilter(kolamId) {
+
+  const start = document.getElementById(`start-${kolamId}`).value;
+  const end = document.getElementById(`end-${kolamId}`).value;
+
+  if (!start || !end) {
+    alert("Pilih tanggal dulu!");
+    return;
+  }
+
+  filterState[kolamId] = { start, end };
+
+  loadKolam();
+}
+
+function isInDateRange(tanggal, filter) {
+
+  // 🔥 INI FIX UTAMA (ANTI ERROR)
+  if (!filter) return true;
+
+  const d = new Date(tanggal);
+  const start = new Date(filter.start);
+  const end = new Date(filter.end);
+
+  return d >= start && d <= end;
+}
+
+// =======================
+// PRINT MODAL CONTROL
+// =======================
+let selectedPrintKolam = null;
+
+function closePrint() {
+  document.getElementById("modalPrint").style.display = "none";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const printType = document.getElementById("printType");
+
+  if (printType) {
+    printType.onchange = function() {
+      const val = this.value;
+
+      document.getElementById("rangeBox").style.display =
+        val === "range" ? "block" : "none";
+    };
+  }
+});
+
+async function cetakData() {
+
+  try {
+
+    showLoading("Membuat struk...");
+
+    const data = await getDataCetak();
+    const kolam = kolamData.find(k => k.id === selectedPrintKolam);
+
+    const lastData = data[data.length - 1];
+    const recordingId = lastData ? lastData[0] : Date.now();
+
+    let user = "user";
+
+try {
+  const firebaseUser = firebase.auth().currentUser;
+
+  if (firebaseUser && firebaseUser.email) {
+    user = firebaseUser.email.split("@")[0];
+  }
+
+} catch (e) {
+  console.warn("Ambil user gagal:", e);
+}
+
+    const tanggal = new Date().toLocaleDateString("sv-SE");
+    const barcodeValue = recordingId.toString();
+
+    // 🔥 ELEMENT (DISEMBUNYIKAN)
+    const div = document.createElement("div");
+    div.style.width = "260px";
+    div.style.padding = "10px";
+    div.style.fontFamily = "monospace";
+    div.style.background = "white";
+    div.style.position = "fixed";
+    div.style.left = "-9999px";
+
+    div.innerHTML = `
+      <h3 style="text-align:center;">RECORDING</h3>
+      <div style="text-align:center;font-size:12px;">${tanggal}</div>
+      <hr>
+      <div><b>Kolam:</b> ${kolam.nama}</div>
+      <div><b>User:</b> ${user}</div>
+      <hr>
+    `;
+
+    if (data.length === 0) {
+      div.innerHTML += `<div style="text-align:center;">Tidak ada data</div>`;
+    } else {
+      data.forEach(d => {
+        div.innerHTML += `
+          <div style="font-size:12px;margin-bottom:6px;">
+            ${d[2]}<br>
+            Suhu : ${d[3]}<br>
+            PH   : ${d[4]}<br>
+            DO   : ${d[5]}<br>
+            Mati : ${d[6]}<br>
+            Pakan: ${d[8]}
+          </div>
+          <hr>
+        `;
+      });
+    }
+
+    // 🔥 BARCODE
+    const barcodeSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    div.appendChild(barcodeSvg);
+
+    const label = document.createElement("div");
+    label.innerText = "VALID";
+    label.style.textAlign = "center";
+    label.style.fontSize = "12px";
+    div.appendChild(label);
+
+    document.body.appendChild(div);
+
+    // 🔥 GENERATE BARCODE
+    JsBarcode(barcodeSvg, barcodeValue, {
+      width: 1.5,
+      height: 40,
+      displayValue: false
+    });
+
+    // 🔥 TUNGGU RENDER
+    await new Promise(r => setTimeout(r, 500));
+
+    // 🔥
+    const canvas = await html2canvas(div);
+
+// 🔥 METHOD PALING AMAN (HP + PC)
+canvas.toBlob(function(blob) {
+
+  if (!blob) {
+    alert("Gagal membuat file!");
+    return;
+  }
+
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "struk.jpg";
+
+  document.body.appendChild(link);
+  link.click();
+
+  // 🔥 PINDAH KE SINI (INI KUNCI)
+  closePrint();
+
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+  }, 1000);
+
+});
+
+    // 🔥 AUTO CLOSE (DI SINI YANG BENAR)
+    closePrint();
+
+    showToast("Download berhasil!", "success");
+
+  } catch (err) {
+
+    console.error("CETAK ERROR:", err);
+    showToast("Gagal download!", "error");
+
+  } finally {
+    hideLoading();
+  }
+}
+
+// =======================
+// AMBIL DATA CETAK (WAJIB ADA)
+// =======================
+async function getDataCetak() {
+
+  const res = await fetch(RECORDING_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  const type = document.getElementById("printType").value;
+  const start = document.getElementById("printStart").value;
+  const end = document.getElementById("printEnd").value;
+
+  const today = new Date().toLocaleDateString("sv-SE");
+
+  return rows.filter(r => {
+
+    const kolamId = Number(r[1]);
+    const tanggal = r[2];
+
+    if (kolamId !== selectedPrintKolam) return false;
+
+    if (type === "today") {
+      return tanggal === today;
+    }
+
+    if (type === "range") {
+      if (!start || !end) return false;
+      return tanggal >= start && tanggal <= end;
+    }
+
+    return true;
+  });
+}
+
+function openEditRecording(id) {
+  selectedEditKolam = id;
+  document.getElementById("modalEditRecording").style.display = "block";
+}
+
+function closeEditRecording() {
+  document.getElementById("modalEditRecording").style.display = "none";
+}
+
+async function loadDataEdit() {
+
+  const tanggal = document.getElementById("editTanggal").value;
+
+  if (!tanggal) {
+    showToast("Pilih tanggal dulu", "info");
+    return;
+  }
+
+  const res = await fetch(RECORDING_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  const data = rows.filter(r => {
+    return Number(r[1]) === selectedEditKolam && r[2] === tanggal;
+  });
+
+  const container = document.getElementById("editFormContainer");
+
+  if (data.length === 0) {
+    container.innerHTML = "<p>Tidak ada data</p>";
+    return;
+  }
+
+  // ambil data pertama (bisa kamu extend kalau multi data)
+  const d = data[data.length - 1];
+
+  selectedEditId = d[0]; // 🔥 penting
+
+  container.innerHTML = `
+    <div class="form-group">
+      <label>Suhu</label>
+      <input type="number" id="editSuhu" value="${d[3]}">
+    </div>
+
+    <div class="form-group">
+      <label>PH</label>
+      <input type="number" id="editPh" value="${d[4]}">
+    </div>
+
+    <div class="form-group">
+      <label>DO</label>
+      <input type="number" id="editDo" value="${d[5]}">
+    </div>
+
+    <div class="form-group">
+      <label>Kematian</label>
+      <input type="number" id="editMati" value="${d[6]}">
+    </div>
+
+    <div class="form-group">
+      <label>Pakan</label>
+      <input type="number" id="editPakan" value="${d[8]}">
+    </div>
+
+    <button onclick="submitEditRecording()">💾 Simpan Perubahan</button>
+  `;
+}
+
+async function submitEditRecording() {
+
+  const suhu = document.getElementById("editSuhu").value;
+  const ph = document.getElementById("editPh").value;
+  const doAir = document.getElementById("editDo").value;
+  const mati = document.getElementById("editMati").value;
+
+  const pakanKg = parseFloat(document.getElementById("editPakan").value) || 0;
+  const pakanGram = pakanKg * 1000;
+
+  if (!suhu || !ph || !doAir) {
+    showToast("Isi data dengan benar!", "info");
+    return;
+  }
+
+  const formData = new URLSearchParams();
+  formData.append("action", "edit_recording");
+  formData.append("id", selectedEditId);
+  formData.append("suhu", suhu);
+  formData.append("ph", ph);
+  formData.append("do", doAir);
+  formData.append("kematian", mati);
+  formData.append("pakan", pakanGram); // ✅ INI YANG BENAR
+
+  try {
+    await fetch(POST_URL, {
+      method: "POST",
+      body: formData
+    });
+
+    showToast("Data berhasil diupdate", "success");
+
+    closeEditRecording();
+    loadKolam();
+
+  } catch (err) {
+    showToast("Gagal update data", "error");
+  }
+}
+
+function openKuras(id) {
+  if (currentRole !== "manajemen") {
+  alert("Hanya Untuk Tim Manajemen");
+  return;
+}
+  selectedKurasId = id;
+  document.getElementById("modalKuras").style.display = "block";
+}
+
+function closeKuras() {
+  document.getElementById("modalKuras").style.display = "none";
+}
+
+async function bersihkanKolam() {
+
+  if (!confirm("Yakin ingin membersihkan semua data kolam ini?")) return;
+
+  const formData = new URLSearchParams();
+  formData.append("action", "clear_kolam");
+  formData.append("kolam_id", selectedKurasId);
+
+  await fetch(POST_URL, {
+    method: "POST",
+    body: formData
+  });
+
+  showToast("Data kolam dibersihkan", "success");
+
+  closeKuras();
+  loadKolam();
+}
+
+async function bongkarKolam() {
+
+  if (!confirm("PERMANEN! Yakin ingin menghapus kolam ini?")) return;
+
+  const formData = new URLSearchParams();
+  formData.append("action", "delete_kolam");
+  formData.append("kolam_id", selectedKurasId);
+
+  await fetch(POST_URL, {
+    method: "POST",
+    body: formData
+  });
+
+  showToast("Kolam dihapus permanen", "success");
+
+  closeKuras();
+  loadKolam();
+}
+function refreshRecording() {
+  showToast("Memuat ulang data...", "info");
+  loadKolam();
+}
+
+setInterval(() => {
+  if (!isUserInteracting) {
+    loadKolam();
+  }
+}, 60000);
+
+let kolamPakan = [];
+
+async function loadKolamPakan() {
+
+  const container = document.getElementById("pakanContainer");
+  container.innerHTML = "";
+
+  const pengeluaran = await getPengeluaranPerKolam();
+
+  // 🔥 GANTI DI SINI
+  for (const k of kolamData) {
+
+    const rata = await getRataPakanPerKolam(k.id);
+
+    const div = document.createElement("div");
+    div.className = "kolam-box";
+
+    const dataPakan = pengeluaran[k.id] || {};
+
+    let list = "";
+
+    for (let jenis in dataPakan) {
+      list += `<div>🐟 ${jenis} : ${(dataPakan[jenis] / 1000).toFixed(2)} kg</div>`;
+    }
+
+    div.innerHTML = `
+      <strong>${k.nama}</strong>
+      ${list || "<small>Tidak ada data</small>"}
+
+      <div style="font-size:12px;color:#555;">
+        📊 Rata-rata: ${rata.toFixed(5)} gram/ekor
+      </div>
+
+      <button onclick="openFilterPakan(${k.id})">
+        📊 Cek Pengeluaran Pakan
+      </button>
+    `;
+
+    container.appendChild(div);
+  }
+}
+
+function renderKolamPakan() {
+
+  const container = document.getElementById("pakanContainer");
+
+  if (!container) {
+    console.error("pakanContainer tidak ditemukan");
+    return;
+  }
+
+  container.innerHTML = "";
+
+  kolamPakan.forEach(k => {
+
+    const div = document.createElement("div");
+    div.className = "kolam-box";
+
+    div.innerHTML = `
+      <strong>${k.nama}</strong>
+      <div id="pakan-${k.id}">Loading...</div>
+    `;
+
+    container.appendChild(div);
+
+    loadPakanKolam(k.id);
+  });
+}
+
+async function loadPakanKolam(kolamId) {
+
+  const res = await fetch(RECORDING_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  const data = rows.filter(r => r[1] == kolamId);
+
+  const el = document.getElementById(`pakan-${kolamId}`);
+
+  if (!el) return;
+
+  if (data.length === 0) {
+    el.innerHTML = "<small>Belum ada data pakan</small>";
+    return;
+  }
+
+  const grouped = {};
+
+  data.forEach(d => {
+    const jenis = (d[7] || "").trim().toUpperCase();
+    const jumlah = Number(d[8]);
+
+    if (!grouped[jenis]) grouped[jenis] = 0;
+    grouped[jenis] += jumlah;
+  });
+
+  let html = "";
+
+  Object.keys(grouped).forEach(jenis => {
+    html += `
+      <div style="font-size:12px;margin-top:5px;">
+        ${jenis} : <b>${(grouped[jenis] / 1000).toFixed(2)} kg</b>
+      </div>
+    `;
+  });
+
+  el.innerHTML = html;
+}
+
+async function loadPakanPage() {
+  await loadKolam();
+  await loadStokPakan();
+  await loadPengeluaranPakan();
+  await loadKolamPakan(); // 🔥 ini penting biar kolam muncul
+}
+
+
+async function loadStokPakan() {
+
+  const res = await fetch(STOK_PAKAN_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift(); // hapus header
+
+  const el = document.getElementById("listStok");
+  el.innerHTML = "";
+
+  rows.forEach(r => {
+
+    const nama = r[1]; // 🔥 INI YANG KURANG
+    const stok = Number(r[2] || 0);
+
+    el.innerHTML += `
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-bottom:6px;
+      ">
+        <span>${nama}</span>
+
+        <div>
+          <b>${(stok / 1000).toFixed(2)} kg</b>
+          <button onclick="openEditPakan('${nama}', ${stok})"
+            style="margin-left:8px;font-size:11px;">
+            Ubah Data
+          </button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+async function loadPengeluaranPakan() {
+
+  const res = await fetch(LOG_PAKAN_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  const el = document.getElementById("listPengeluaran");
+
+  if (!el) return;
+
+  el.innerHTML = "";
+
+  // 🔥 GROUP PER JENIS
+  const grouped = {};
+
+  rows.forEach(r => {
+
+    const jenis = r[1]; // nama pakan
+    const jumlah = Number(r[2]); // jumlah keluar
+
+    if (!jenis || isNaN(jumlah)) return;
+
+    if (!grouped[jenis]) {
+      grouped[jenis] = 0;
+    }
+
+    grouped[jenis] += jumlah;
+  });
+
+  // 🔥 TAMPILKAN
+  Object.keys(grouped).forEach(jenis => {
+
+    el.innerHTML += `
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        padding:6px 0;
+        border-bottom:1px solid #eee;
+      ">
+        <span>${jenis}</span>
+        <strong>${(grouped[jenis] / 1000).toFixed(2)} kg</strong>
+      </div>
+    `;
+  });
+
+}
+function openTambahStok() {
+  const modal = document.getElementById("modalTambahStok");
+
+  if (!modal) {
+    console.error("modalTambahStok tidak ditemukan");
+    alert("Modal tidak ada!");
+    return;
+  }
+
+  modal.style.display = "block";
+}
+
+function closeTambahStok() {
+  const modal = document.getElementById("modalTambahStok");
+  if (modal) modal.style.display = "none";
+}
+
+async function submitStok() {
+
+  const nama = document.getElementById("stokNama").value.trim();
+  const jumlahKg = parseFloat(document.getElementById("stokJumlah").value) || 0;
+  const jumlahGram = jumlahKg * 1000;
+
+  if (!nama || jumlahKg <= 0) {
+    showToast("Isi nama & jumlah!", "error");
+    return;
+  }
+
+  const formData = new URLSearchParams();
+  formData.append("action", "tambah_jenis_pakan");
+  formData.append("jenis", nama);
+  formData.append("stok", jumlahGram); // 🔥 INI YANG KURANG
+
+  await fetch(POST_URL, {
+    method: "POST",
+    body: formData
+  });
+
+  showToast("Pakan berhasil ditambahkan", "success");
+
+  document.getElementById("stokNama").value = "";
+  document.getElementById("stokJumlah").value = "";
+
+  closeTambahStok();
+  loadStokPakan();
+}
+async function loadJenisPakanKolam(kolamId) {
+
+  const res = await fetch(STOK_PAKAN_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  const el = document.getElementById(`pakanKolam-${kolamId}`);
+  el.innerHTML = "";
+
+  rows.forEach(r => {
+    el.innerHTML += `
+      <div>${r[1]}</div>
+    `;
+  });
+}
+
+let selectedKolamPakanId = null;
+
+function closeTambahStokKolam() {
+  document.getElementById("modalTambahStokKolam").style.display = "none";
+}
+
+async function submitTambahStokKolam() {
+
+  const nama = document.getElementById("stokKolamNama").value;
+  const jumlahKg = parseFloat(document.getElementById("stokKolamJumlah").value) || 0;
+const jumlahGram = jumlahKg * 1000;
+
+  if (!nama || jumlahKg <= 0) {
+    showToast("Isi data dengan benar", "info");
+    return;
+  }
+
+  const formData = new URLSearchParams();
+  formData.append("action", "tambah_stok_kolam");
+  formData.append("kolam_id", selectedKolamPakanId);
+  formData.append("nama", nama);
+  formData.append("jumlah", jumlahGram);
+
+  await fetch(POST_URL, {
+    method: "POST",
+    body: formData
+  });
+
+  showToast("Stok kolam berhasil ditambah", "success");
+
+  closeTambahStokKolam();
+  loadKolamPakan();
+}
+
+let masterPakanList = [];
+
+async function loadMasterPakan() {
+
+  const res = await fetch(STOK_PAKAN_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  masterPakanList = rows.map(r => ({
+    nama: r[1],
+    stok: Number(r[2])
+  }));
+}
+
+function renderDropdownPakan() {
+
+  const select = document.getElementById("jenisPakan");
+
+  if (!select) return;
+
+  select.innerHTML = `<option value="">Pilih Pakan</option>`;
+
+  masterPakanList.forEach(p => {
+    select.innerHTML += `
+      <option value="${p.nama}">
+        ${p.nama} (${p.stok} gr)
+      </option>
+    `;
+  });
+}
+
+function renderDropdownStokKolam() {
+
+  const select = document.getElementById("stokKolamNama");
+
+  if (!select) return;
+
+  select.innerHTML = `<option value="">Pilih Pakan</option>`;
+
+  masterPakanList.forEach(p => {
+    select.innerHTML += `
+      <option value="${p.nama}">
+        ${p.nama}
+      </option>
+    `;
+  });
+}
+
+async function tambahStokKolam(id) {
+  selectedKolamPakanId = id;
+
+  await loadMasterPakan();
+  renderDropdownStokKolam();
+
+  document.getElementById("modalTambahStokKolam").style.display = "block";
+}
+
+function openStokPakan() {
+  const modal = document.getElementById("modalStok");
+
+  if (!modal) {
+    console.error("modalStok tidak ditemukan");
+    alert("Modal tidak ada!");
+    return;
+  }
+
+  modal.style.display = "block";
+
+  console.log("MODAL DIBUKA"); // 🔥 TEST
+}
+
+function closeStokPakan() {
+  const modal = document.getElementById("modalStok");
+  if (modal) modal.style.display = "none";
+}
+
+let selectedPakanName = null;
+
+function openEditPakan(nama, stok) {
+  selectedPakanName = nama;
+
+  document.getElementById("editNamaPakan").value = nama;
+  document.getElementById("editStokPakan").value = stok;
+
+  document.getElementById("modalEditPakan").style.display = "block";
+}
+
+function closeEditPakan() {
+  document.getElementById("modalEditPakan").style.display = "none";
+}
+
+async function submitEditPakan() {
+
+  const namaBaru = document.getElementById("editNamaPakan").value;
+  const stokKg = parseFloat(document.getElementById("editStokPakan").value) || 0;
+  const stokGram = stokKg * 1000;
+
+  if (!namaBaru || stokKg <= 0) {
+    showToast("Isi data dengan benar", "error");
+    return;
+  }
+
+  const formData = new URLSearchParams();
+  formData.append("action", "edit_pakan");
+  formData.append("nama_lama", selectedPakanName);
+  formData.append("nama_baru", namaBaru);
+  formData.append("stok", stokGram);
+
+  await fetch(POST_URL, {
+    method: "POST",
+    body: formData
+  });
+
+  showToast("Pakan berhasil diupdate", "success");
+
+  closeEditPakan();
+  await loadStokPakan();
+}
+
+function openHapusPakan() {
+
+  const select = document.getElementById("hapusPakanSelect");
+  select.innerHTML = "";
+
+  fetch(STOK_PAKAN_CSV)
+    .then(res => res.text())
+    .then(text => {
+
+      const rows = text.trim().split("\n").map(r =>
+        r.replace(/"/g, "").split(",")
+      );
+
+      rows.shift();
+
+      rows.forEach(r => {
+        const nama = r[1];
+
+        const opt = document.createElement("option");
+        opt.value = nama;
+        opt.textContent = nama;
+
+        select.appendChild(opt);
+      });
+
+    });
+
+  document.getElementById("modalHapusPakan").style.display = "block";
+}
+
+function closeHapusPakan() {
+  document.getElementById("modalHapusPakan").style.display = "none";
+}
+
+async function submitHapusPakan() {
+
+  const nama = document.getElementById("hapusPakanSelect").value;
+
+  if (!nama) {
+    showToast("Pilih pakan dulu", "error");
+    return;
+  }
+
+  const confirmDelete = confirm(`Yakin hapus pakan "${nama}"?`);
+
+  if (!confirmDelete) return;
+
+  const formData = new URLSearchParams();
+  formData.append("action", "hapus_pakan");
+  formData.append("nama", nama);
+
+  await fetch(POST_URL, {
+    method: "POST",
+    body: formData
+  });
+
+  showToast("Pakan berhasil dihapus", "success");
+
+  closeHapusPakan();
+
+  await loadStokPakan();
+  await loadPengeluaranPakan();
+  await loadKolamPakan();
+}
+
+function openHapusPengeluaran() {
+
+  const select = document.getElementById("hapusPengeluaranSelect");
+  select.innerHTML = "";
+
+  fetch(LOG_PAKAN_CSV)
+    .then(res => res.text())
+    .then(text => {
+
+      const rows = text.trim().split("\n").map(r =>
+        r.replace(/"/g, "").split(",")
+      );
+
+      rows.shift();
+
+      const unique = new Set();
+
+      rows.forEach(r => {
+        const jenis = r[1];
+        if (jenis) unique.add(jenis);
+      });
+
+      unique.forEach(jenis => {
+        const opt = document.createElement("option");
+        opt.value = jenis;
+        opt.textContent = jenis;
+        select.appendChild(opt);
+      });
+
+    });
+
+  document.getElementById("modalHapusPengeluaran").style.display = "block";
+}
+
+function closeHapusPengeluaran() {
+  document.getElementById("modalHapusPengeluaran").style.display = "none";
+}
+
+async function submitHapusPengeluaran() {
+
+  const jenis = document.getElementById("hapusPengeluaranSelect").value;
+
+  if (!jenis) {
+    showToast("Pilih jenis pakan", "error");
+    return;
+  }
+
+  if (!confirm(`Yakin hapus semua pengeluaran "${jenis}"?`)) return;
+
+  const formData = new URLSearchParams();
+  formData.append("action", "hapus_pengeluaran");
+  formData.append("jenis", jenis);
+
+  await fetch(POST_URL, {
+    method: "POST",
+    body: formData
+  });
+
+  showToast("Pengeluaran berhasil dihapus", "success");
+
+  closeHapusPengeluaran();
+
+  await loadPengeluaranPakan();
+  await loadKolamPakan();
+}
+
+async function getPengeluaranPerKolam() {
+
+  const res = await fetch(LOG_PAKAN_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  const hasil = {};
+
+  rows.forEach(r => {
+
+    const jenis = r[1];
+    const jumlah = Number(r[2] || 0);
+    const kolamId = r[4];
+
+    if (!hasil[kolamId]) hasil[kolamId] = {};
+    if (!hasil[kolamId][jenis]) hasil[kolamId][jenis] = 0;
+
+    hasil[kolamId][jenis] += jumlah;
+  });
+
+  return hasil;
+}
+
+let selectedKolamFilter = null;
+
+async function openFilterPakan(id) {
+  isUserInteracting = true;
+
+  selectedKolamFilter = id;
+
+  const container = document.getElementById("filterJenis");
+  container.innerHTML = "";
+
+  const res = await fetch(STOK_PAKAN_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+rows.forEach(r => {
+
+  const jenis = r[1];
+
+  const checked = selectedJenisPakan.includes(jenis) ? "checked" : "";
+
+  container.innerHTML += `
+    <label>
+      <input type="checkbox" value="${jenis}" ${checked}>
+      ${jenis}
+    </label>
+  `;
+});
+
+
+// 🔥 INI STEP 3 (WAJIB DI SINI)
+container.querySelectorAll("input[type=checkbox]").forEach(cb => {
+  cb.addEventListener("change", function() {
+
+    if (this.checked) {
+      if (!selectedJenisPakan.includes(this.value)) {
+        selectedJenisPakan.push(this.value);
+      }
+    } else {
+      selectedJenisPakan = selectedJenisPakan.filter(v => v !== this.value);
+    }
+
+  });
+});
+
+  document.getElementById("modalFilterPakan").style.display = "block";
+}
+
+function closeFilter() {
+  document.getElementById("modalFilterPakan").style.display = "none";
+}
+
+async function submitFilter() {
+
+  const start = document.getElementById("filterStart").value;
+  const end = document.getElementById("filterEnd").value;
+
+  const checks = document.querySelectorAll("#filterJenis input:checked");
+
+  const jenisDipilih = Array.from(checks).map(c => c.value);
+
+  const res = await fetch(LOG_PAKAN_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  let hasil = [];
+
+  rows.forEach(r => {
+
+    const jenis = r[1];
+    const jumlah = r[2];
+    const tanggal = r[3];
+    const kolamId = r[4];
+
+    if (kolamId != selectedKolamFilter) return;
+    if (!jenisDipilih.includes(jenis)) return;
+
+    if (start && tanggal < start) return;
+    if (end && tanggal > end) return;
+
+    hasil.push(r);
+  });
+
+  tampilkanLaporan(hasil);
+}
+
+function tampilkanLaporan(data) {
+
+  const el = document.getElementById("laporanBody");
+
+  const tanggal = new Date().toLocaleDateString("sv-SE");
+
+  let total = 0;
+
+  let html = `
+    <div style="
+      width:260px;
+      font-family:monospace;
+      background:white;
+      padding:10px;
+    ">
+
+      <h3 style="text-align:center;">LAPORAN PAKAN</h3>
+      <div style="text-align:center;font-size:12px;">${tanggal}</div>
+
+      <hr>
+  `;
+
+  data.forEach(d => {
+
+    const jenis = d[1];
+    const jumlah = Number(d[2]);
+    const tgl = d[3];
+
+    total += jumlah;
+
+    html += `
+      <div style="font-size:12px;margin-bottom:6px;">
+        ${tgl}<br>
+        ${jenis} : ${jumlah} gram
+      </div>
+      <hr>
+    `;
+  });
+
+  html += `
+      <div style="font-size:13px;text-align:center;">
+        TOTAL : ${total} gram
+      </div>
+
+      <div style="text-align:center;margin-top:10px;">
+        --- VALID ---
+      </div>
+
+    </div>
+  `;
+
+  el.innerHTML = html;
+
+  document.getElementById("modalLaporan").style.display = "block";
+}
+
+function closeLaporan() {
+  document.getElementById("modalLaporan").style.display = "none";
+}
+
+function downloadStruk() {
+
+  const el = document.getElementById("laporanBody");
+
+  html2canvas(el).then(canvas => {
+
+    const link = document.createElement("a");
+    link.download = `laporan_pakan_${Date.now()}.jpg`;
+    link.href = canvas.toDataURL("image/jpeg", 1.0);
+
+    link.click();
+  });
+}
+
+function refreshPakan() {
+  loadPakanPage();
+  showToast("Data diperbarui", "success");
+}
+
+const defaultPage = localStorage.getItem("activeSection") || "recording";
+
+if (defaultPage === "pakan") {
+  loadPakanPage();
+}
+
+async function openTambahStokMaster() {
+
+  const select = document.getElementById("tambahStokJenis");
+  select.innerHTML = "";
+
+  const res = await fetch(STOK_PAKAN_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  rows.forEach(r => {
+    const jenis = r[1];
+
+    const opt = document.createElement("option");
+    opt.value = jenis;
+    opt.textContent = jenis;
+
+    select.appendChild(opt);
+  });
+
+  document.getElementById("modalTambahStokMaster").style.display = "block";
+}
+
+function closeTambahStokMaster() {
+  document.getElementById("modalTambahStokMaster").style.display = "none";
+}
+
+async function submitTambahStokMaster() {
+
+  const jenis = document.getElementById("tambahStokJenis").value;
+  const jumlahKg = parseFloat(document.getElementById("tambahStokJumlah").value) || 0;
+  const jumlahGram = jumlahKg * 1000;
+
+  if (!jenis || jumlahKg <= 0) {
+    showToast("Isi data dengan benar", "error");
+    return;
+  }
+
+  const formData = new URLSearchParams();
+  formData.append("action", "tambah_stok_master");
+  formData.append("jenis", jenis);
+  formData.append("jumlah", jumlahGram);
+
+  await fetch(POST_URL, {
+    method: "POST",
+    body: formData
+  });
+
+  showToast("Stok berhasil ditambah", "success");
+
+  closeTambahStokMaster();
+  loadPakanPage();
+}
+
+async function openRiwayatStok() {
+
+  const container = document.getElementById("riwayatJenis");
+  container.innerHTML = "";
+
+  const res = await fetch(STOK_PAKAN_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  rows.forEach(r => {
+    const jenis = r[1];
+
+    container.innerHTML += `
+      <label>
+        <input type="checkbox" value="${jenis}">
+        ${jenis}
+      </label>
+    `;
+  });
+
+  document.getElementById("modalRiwayatStok").style.display = "block";
+}
+
+function closeRiwayatStok() {
+  document.getElementById("modalRiwayatStok").style.display = "none";
+}
+
+let dataRiwayatGlobal = [];
+
+async function submitRiwayatStok() {
+
+  const start = document.getElementById("riwayatStart").value;
+  const end = document.getElementById("riwayatEnd").value;
+  const format = document.getElementById("formatLaporan").value;
+  
+  if (!format) {
+    showToast("Pilih format dulu", "error");
+    return;
+  }
+
+  const checks = document.querySelectorAll("#riwayatJenis input:checked");
+  const jenisDipilih = Array.from(checks).map(c => c.value);
+
+  const res = await fetch(LOG_STOK_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  let hasil = [];
+
+  rows.forEach(r => {
+
+    const jenis = r[1];
+    const jumlah = r[2];
+    const tanggal = r[3];
+    const tipe = r[4];
+
+    if (!jenisDipilih.includes(jenis)) return;
+
+    if (start && tanggal < start) return;
+    if (end && tanggal > end) return;
+
+    hasil.push(r);
+  });
+
+  dataRiwayatGlobal = hasil;
+
+  tampilkanRiwayat(hasil);
+}
+
+function tampilkanRiwayat(data) {
+
+  let total = 0;
+  let html = `
+    <div style="width:260px;font-family:monospace;background:white;padding:10px;">
+      <h3 style="text-align:center;">STOK MASUK</h3>
+      <hr>
+  `;
+
+  data.forEach(d => {
+    total += Number(d[2]);
+
+    html += `
+      <div style="font-size:12px;">
+        ${d[3]}<br>
+        ${d[1]} : ${d[2]} gram
+      </div>
+      <hr>
+    `;
+  });
+
+  html += `
+    <div style="text-align:center;">
+      TOTAL : ${total} gram
+    </div>
+  </div>
+  `;
+
+  document.getElementById("hasilRiwayat").innerHTML = html;
+  document.getElementById("modalHasilRiwayat").style.display = "block";
+}
+
+function downloadRiwayat() {
+
+  const format = document.getElementById("formatLaporan").value;
+  const el = document.getElementById("hasilRiwayat");
+
+  html2canvas(el).then(canvas => {
+
+    if (format === "jpg") {
+
+      const link = document.createElement("a");
+      link.download = "riwayat_stok.jpg";
+      link.href = canvas.toDataURL("image/jpeg");
+      link.click();
+
+    } else if (format === "pdf") {
+
+      const img = canvas.toDataURL("image/jpeg");
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
+
+      pdf.addImage(img, "JPEG", 10, 10, 180, 0);
+      pdf.save("riwayat_stok.pdf");
+    }
+
+  });
+}
+
+function closeHasilRiwayat() {
+  document.getElementById("modalHasilRiwayat").style.display = "none";
+}
+
+async function getRataPakanPerKolam(kolamId) {
+
+  // ambil log pakan
+  const resLog = await fetch(RECORDING_CSV);
+  const textLog = await resLog.text();
+
+  const rowsLog = textLog.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rowsLog.shift();
+
+  let totalPakan = 0;
+
+ rowsLog.forEach(r => {
+  if (String(r[1]).trim() === String(kolamId).trim()) {
+    const jumlah = parseFloat(String(r[8]).replace(",", "").trim()) || 0;
+totalPakan += jumlah;
+  }
+});
+
+  // ambil populasi kolam
+  const resKolam = await fetch(KOLAM_CSV);
+  const textKolam = await resKolam.text();
+
+  const rowsKolam = textKolam.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rowsKolam.shift();
+
+  let populasi = 0;
+
+  rowsKolam.forEach(r => {
+    if (String(r[0]) === String(kolamId)) {
+      populasi = Number(r[3] || 0);
+    }
+  });
+
+  if (populasi === 0) return 0;
+
+  return totalPakan / populasi;
+}
+
+async function submitTambahJenisPakan() {
+
+  const nama = document.getElementById("stokNama").value.trim();
+
+  if (!nama) {
+    showToast("Isi nama pakan", "error");
+    return;
+  }
+
+  const formData = new URLSearchParams();
+  formData.append("action", "tambah_jenis_pakan"); // 🔥 beda di sini
+  formData.append("jenis", nama);
+
+  await fetch(POST_URL, {
+    method: "POST",
+    body: formData
+  });
+
+  showToast("Jenis pakan berhasil ditambahkan", "success");
+
+  closeTambahStok();
+  loadStokPakan();
+}
+
+function openIkanMasuk(id) {
+  if (currentRole !== "manajemen") {
+  alert("Hanya Untuk Tim Manajemen");
+  return;
+}
+  selectedKolamId = id;
+  document.getElementById("modalIkanMasuk").style.display = "block";
+}
+
+function closeIkanMasuk() {
+  document.getElementById("modalIkanMasuk").style.display = "none";
+}
+
+function openPanen(id) {
+  
+  if (currentRole !== "manajemen") {
+  alert("Hanya Untuk Tim Manajemen");
+  return;
+}
+  selectedKolamId = id;
+  document.getElementById("modalPanen").style.display = "block";
+}
+
+function closePanen() {
+  document.getElementById("modalPanen").style.display = "none";
+}
+
+async function submitIkanMasuk() {
+
+  const tanggal = document.getElementById("tanggalMasuk").value;
+
+  if (!tanggal) {
+    showToast("Pilih tanggal dulu", "error");
+    return;
+  }
+
+  const formData = new URLSearchParams();
+  formData.append("action", "set_tanggal_masuk");
+  formData.append("kolamId", selectedKolamId);
+  formData.append("tanggal", tanggal);
+
+  await fetch(POST_URL, {
+    method: "POST",
+    body: formData
+  });
+
+  closeIkanMasuk();
+  loadKolam();
+}
+
+async function submitPanen() {
+
+  const tanggal = document.getElementById("tanggalPanen").value;
+
+  if (!tanggal) {
+    showToast("Pilih tanggal dulu", "error");
+    return;
+  }
+
+  const formData = new URLSearchParams();
+  formData.append("action", "set_tanggal_panen");
+  formData.append("kolamId", selectedKolamId);
+  formData.append("tanggal", tanggal);
+
+  await fetch(POST_URL, {
+    method: "POST",
+    body: formData
+  });
+
+  closePanen();
+  loadKolam();
+}
+
+function hitungUmur(tanggal_masuk, tanggal_panen) {
+
+  if (!tanggal_masuk) return "-";
+
+  const start = new Date(tanggal_masuk);
+  const end = tanggal_panen ? new Date(tanggal_panen) : new Date();
+
+  const diff = end - start;
+
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
+// =======================
+// LABORATORIUM
+// =======================
+async function loadLab() {
+
+  // 🔥 SELALU LOAD
+  await loadKolam();
+  await loadSampling(); // 🔥 PINDAH KE SINI (WAJIB)
+
+  const rows = await getRecordingLab();
+
+  console.log("LAB ROWS:", rows);
+  console.log("KOLAM DATA:", kolamData);
+
+  renderLabMaster(rows);
+  renderLabKolam(rows);
+  renderRanking(rows);
+  renderChart(rows);
+  renderChartSR(rows);
+  renderChartMortalitas(rows);
+}
+
+// =======================
+// AMBIL DATA RECORDING + FILTER
+// =======================
+async function getRecordingLab() {
+
+  const start = document.getElementById("labStart")?.value;
+  const end = document.getElementById("labEnd")?.value;
+
+  const res = await fetch(RECORDING_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  return rows.filter(r => {
+    const tanggal = r[2];
+
+    if (start && tanggal < start) return false;
+    if (end && tanggal > end) return false;
+
+    return true;
+  });
+}
+
+// =======================
+// HITUNG DATA PER KOLAM
+// =======================
+function hitungLab(kolamId, rows) {
+
+  let totalPakan = 0;
+  let totalMati = 0;
+
+  const kolam = kolamData.find(k => Number(k.id) === Number(kolamId));
+
+  if (!kolam) return { sr: 0, mortalitas: 0, fcr: 0, efisiensi: 0 };
+
+  rows.forEach(r => {
+    if (Number(r[1]) === Number(kolamId)) {
+      totalPakan += Number(r[8] || 0);
+      totalMati += Number(r[6] || 0);
+    }
+  });
+
+  const awal = kolam.kapasitas || 0;
+  const akhir = kolam.populasi || 0;
+
+  // 🔥 AMBIL SAMPLING
+  const sampling = getSamplingAktif(kolamId);
+
+  let biomassa = 0;
+
+  if (sampling && sampling.berat > 0) {
+    biomassa = akhir * sampling.berat;
+  }
+
+  // 🔥 FIX ANTI NaN
+  const sr = awal > 0 ? (akhir / awal) * 100 : 0;
+  const mortalitas = awal > 0 ? (totalMati / awal) * 100 : 0;
+  const fcr = (biomassa > 0 && totalPakan > 0) ? totalPakan / biomassa : 0;
+  const efisiensi = fcr > 0 ? (1 / fcr) * 100 : 0;
+
+  console.log("DEBUG:", {
+    kolamId,
+    totalPakan,
+    totalMati,
+    sampling,
+    biomassa,
+    fcr
+  });
+
+  return { sr, mortalitas, fcr, efisiensi };
+}
+
+// =======================
+// RENDER MASTER
+// =======================
+function renderLabMaster(rows) {
+
+  let totalPakan = 0;
+  let totalMati = 0;
+  let totalAwal = 0;
+  let totalAkhir = 0;
+
+  kolamData.forEach(k => {
+    totalAwal += k.kapasitas || 0;
+    totalAkhir += k.populasi || 0;
+  });
+
+  rows.forEach(r => {
+    totalPakan += Number(r[8] || 0);
+    totalMati += Number(r[6] || 0);
+  });
+
+  // 🔥 TAMBAHKAN INI
+  const sr = totalAwal ? (totalAkhir / totalAwal) * 100 : 0;
+
+  if (rows.length === 0) {
+    document.getElementById("labMaster").innerHTML = `
+      <div style="padding:15px; text-align:center; color:#999;">
+        Tidak ada data pada rentang tanggal ini
+      </div>
+    `;
+    return;
+  }
+
+  const mortalitas = totalAwal ? (totalMati / totalAwal) * 100 : 0;
+  let totalBiomassa = 0;
+
+kolamData.forEach(k => {
+
+  const dataKolam = hitungLab(k.id, rows);
+
+  // 🔥 ambil sampling
+  const sampling = getSamplingAktif(k.id);
+
+  if (sampling && sampling.berat > 0) {
+    totalBiomassa += (k.populasi || 0) * sampling.berat;
+  }
+
+});
+
+const fcr = (totalBiomassa > 0 && totalPakan > 0)
+  ? totalPakan / totalBiomassa
+  : 0;
+  const efisiensi = fcr ? (1 / fcr) * 100 : 0;
+
+  document.getElementById("labMaster").innerHTML = `
+    <div class="lab-grid">
+
+      <div class="lab-card sr">
+        <small>Survival Rate</small>
+        <h2>${sr.toFixed(2)}%</h2>
+      </div>
+
+      <div class="lab-card mortalitas">
+        <small>Mortalitas</small>
+        <h2>${mortalitas.toFixed(2)}%</h2>
+      </div>
+
+      <div class="lab-card fcr">
+        <small>FCR</small>
+        <h2>${fcr.toFixed(3)}</h2>
+      </div>
+
+      <div class="lab-card efisiensi">
+        <small>Efisiensi</small>
+        <h2>${efisiensi.toFixed(2)}%</h2>
+      </div>
+
+    </div>
+  `;
+}
+
+// =======================
+// RENDER PER KOLAM
+// =======================
+function renderLabKolam(rows) {
+
+  if (rows.length === 0) {
+  document.getElementById("labKolam").innerHTML = `
+    <div style="padding:15px; text-align:center; color:#999;">
+      Tidak ada data kolam pada periode ini
+    </div>
+  `;
+  return;
+}
+  const container = document.getElementById("labKolam");
+  container.innerHTML = "";
+
+  kolamData.forEach(k => {
+
+  const hasData = rows.some(r => Number(r[1]) === Number(k.id));
+
+  if (!hasData) return; // 🔥 ini kunci penting
+
+  const data = hitungLab(k.id, rows);
+
+    const sampling = getSamplingAktif(k.id, new Date());
+    const warnaSR = getWarnaSR(data.sr);
+    const warnaM = getWarnaMortalitas(data.mortalitas);
+    const warnaFCR = getWarnaFCR(data.fcr);
+    const warnaE = getWarnaEfisiensi(data.efisiensi);
+    const div = document.createElement("div");
+    div.className = "kolam-box";
+
+div.innerHTML = `
+  <div class="lab-kolam-card">
+
+    <div class="lab-header">
+      <strong>${k.nama}</strong>
+      <button onclick="openSampling(${k.id})">📏 Sampling</button>
+    </div>
+
+    <div class="lab-content">
+
+      <div class="lab-item ${warnaSR}">
+        <span>SR</span>
+        <b>${data.sr.toFixed(2)}%</b>
+      </div>
+
+      <div class="lab-item ${warnaM}">
+        <span>Mortalitas</span>
+        <b>${data.mortalitas.toFixed(2)}%</b>
+      </div>
+
+      <div class="lab-item ${warnaFCR}">
+        <span>FCR</span>
+        <b>${(data.fcr || 0).toFixed(3)}</b>
+      </div>
+
+      <div class="lab-item ${warnaE}">
+        <span>Efisiensi</span>
+        <b>${data.efisiensi.toFixed(2)}%</b>
+      </div>
+
+    </div>
+
+  </div>
+`;
+
+    container.appendChild(div);
+  });
+}
+
+function getWarnaSR(sr) {
+  if (sr >= 90) return "green";
+  if (sr >= 70) return "orange";
+  return "red";
+}
+
+function getWarnaFCR(fcr) {
+  if (fcr <= 1.2) return "green";
+  if (fcr <= 1.8) return "orange";
+  return "red";
+}
+
+function getWarnaMortalitas(m) {
+  if (m <= 5) return "green";
+  if (m <= 15) return "orange";
+  return "red";
+}
+
+function getWarnaEfisiensi(e) {
+  if (e >= 80) return "green";
+  if (e >= 60) return "orange";
+  return "red";
+}
+
+let chartLab = null;
+
+function renderChart(rows) {
+
+  const dataPerTanggal = {};
+
+  rows.forEach(r => {
+    const tanggal = r[2];
+    const pakan = Number(r[8] || 0);
+
+    if (!dataPerTanggal[tanggal]) {
+      dataPerTanggal[tanggal] = 0;
+    }
+
+    dataPerTanggal[tanggal] += pakan;
+  });
+
+  const labels = Object.keys(dataPerTanggal);
+  const data = Object.values(dataPerTanggal);
+
+  const ctx = document.getElementById("labChart");
+
+  if (chartLab) {
+    chartLab.destroy();
+  }
+
+ labels: data.map(d => d.tanggal);
+
+// 🔥 hitung metrik sederhana (per hari)
+const fcrData = data.map(d => {
+  if (!d.pakan || d.pakan === 0) return 0;
+  return (d.pakan / (d.mati || 1)).toFixed(2);
+});
+
+const srData = data.map(d => {
+  return d.mati ? Math.max(0, 100 - d.mati) : 100;
+});
+
+const mortalitasData = data.map(d => {
+  return d.mati || 0;
+});
+
+  chartLab = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Pakan Harian (gram)",
+        data: data,
+        borderWidth: 2,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: true }
+      }
+    }
+  });
+}
+
+function renderRanking(rows) {
+
+  const hasil = [];
+
+  kolamData.forEach(k => {
+
+    const data = hitungLab(k.id, rows);
+
+    // skip kalau tidak ada data
+    const hasData = rows.some(r => Number(r[1]) === Number(k.id));
+    if (!hasData) return;
+
+    hasil.push({
+      nama: k.nama,
+      sr: data.sr,
+      fcr: data.fcr,
+      score: (data.sr || 0) - (data.fcr || 0) * 10 // 🔥 rumus ranking
+    });
+  });
+
+  // sorting terbaik ke terburuk
+  hasil.sort((a, b) => b.score - a.score);
+
+  const container = document.getElementById("labRanking");
+
+  if (hasil.length === 0) {
+    container.innerHTML = `<div style="color:#999;">Tidak ada data</div>`;
+    return;
+  }
+
+  container.innerHTML = hasil.map((k, i) => `
+    <div class="ranking-item">
+      <span>#${i + 1} ${k.nama}</span>
+      <b>${k.sr.toFixed(1)}%</b>
+    </div>
+  `).join("");
+}
+
+let chartSR = null;
+
+function renderChartSR(rows) {
+
+  const data = {};
+
+  rows.forEach(r => {
+    const tgl = r[2];
+    const mati = Number(r[6] || 0);
+
+    if (!data[tgl]) data[tgl] = { mati: 0 };
+    data[tgl].mati += mati;
+  });
+
+  const labels = Object.keys(data);
+  const values = labels.map(t => data[t].mati);
+
+  if (chartSR) chartSR.destroy();
+
+  chartSR = new Chart(document.getElementById("chartSR"), {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Mortalitas Harian",
+        data: values,
+        borderWidth: 2,
+        tension: 0.3
+      }]
+    }
+  });
+}
+
+let chartM = null;
+
+function renderChartMortalitas(rows) {
+
+  const data = {};
+
+  rows.forEach(r => {
+    const tgl = r[2];
+    const mati = Number(r[6] || 0);
+
+    if (!data[tgl]) data[tgl] = 0;
+    data[tgl] += mati;
+  });
+
+  const labels = Object.keys(data);
+  const values = Object.values(data);
+
+  if (chartM) chartM.destroy();
+
+  chartM = new Chart(document.getElementById("chartMortalitas"), {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Jumlah Kematian",
+        data: values
+      }]
+    }
+  });
+}
+
+async function loadSampling() {
+
+  const res = await fetch(SAMPLING_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  samplingData = rows;
+}
+
+function getSamplingAktif(kolamId) {
+
+  let terbaru = null;
+
+  samplingData.forEach(s => {
+
+    if (Number(s[1]) !== Number(kolamId)) return;
+
+    if (!terbaru || new Date(s[0]) > new Date(terbaru[0])) {
+      terbaru = s;
+    }
+
+  });
+
+  if (!terbaru) return null;
+
+  return {
+    berat: Number(terbaru[2]),
+    panjang: Number(terbaru[3])
+  };
+}
+
+let selectedKolamSampling = null;
+
+function openSampling(id) {
+  selectedKolamSampling = id;
+  document.getElementById("modalSampling").style.display = "block";
+}
+
+function closeSampling() {
+  document.getElementById("modalSampling").style.display = "none";
+}
+
+async function submitSampling() {
+
+  const tanggal = document.getElementById("samplingTanggal").value;
+  const berat = document.getElementById("samplingBerat").value;
+  const panjang = document.getElementById("samplingPanjang").value;
+
+  if (!tanggal || !berat || !panjang) {
+    alert("Isi semua data!");
+    return;
+  }
+
+  const formData = new URLSearchParams();
+  formData.append("action", "tambah_sampling");
+  formData.append("kolamId", selectedKolamSampling);
+  formData.append("tanggal", tanggal);
+  formData.append("berat", berat);
+  formData.append("panjang", panjang);
+
+  const res = await fetch(POST_URL, {
+    method: "POST",
+    body: formData
+  });
+
+  const text = await res.text();
+  console.log("RESPONSE:", text);
+
+  closeSampling();
+  loadLab();
+}
+
+
+
+function openPrint(id) {
+  if (isOpeningPrint) return;
+
+  isOpeningPrint = true;
+
+  selectedPrintKolam = id;
+
+  setTimeout(() => {
+    document.getElementById("modalPrint").style.display = "block";
+    isOpeningPrint = false;
+  }, 100);
+}
+
+async function loadLaporanPage() {
+  await loadKolam(); // 🔥 ambil semua kolam
+  renderLaporanKolam();
+}
+
+async function renderLaporanKolam() {
+
+  const container = document.getElementById("laporanContainer");
+  container.innerHTML = "";
+
+  await loadMasterPakan(); // 🔥 ambil jenis pakan
+
+  kolamData.forEach(k => {
+
+    let checkboxPakan = "";
+
+    masterPakanList.forEach(p => {
+      checkboxPakan += `
+        <label>
+          <input type="checkbox" class="pakan-check" value="${p.nama}">
+          ${p.nama}
+        </label>
+      `;
+    });
+
+    const div = document.createElement("div");
+    div.className = "kolam-box";
+
+    div.innerHTML = `
+      <h3>${k.nama}</h3>
+
+      <div class="filter-box">
+        <input type="date" id="lap-start-${k.id}">
+        <input type="date" id="lap-end-${k.id}">
+      </div>
+
+      <h4>📊 Pilih Data</h4>
+
+      <div class="checkbox-container">
+
+        <strong>🐟 Pakan</strong>
+        ${checkboxPakan}
+
+        <hr>
+
+        <label><input type="checkbox" value="suhu"> Suhu</label>
+        <label><input type="checkbox" value="ph"> PH</label>
+        <label><input type="checkbox" value="do"> DO</label>
+        <label><input type="checkbox" value="kematian"> Kematian</label>
+
+        <hr>
+
+        <label><input type="checkbox" value="fcr"> FCR</label>
+        <label><input type="checkbox" value="sr"> SR</label>
+        <label><input type="checkbox" value="mortalitas"> Mortalitas</label>
+        <label><input type="checkbox" value="efisiensi"> Efisiensi</label>
+
+      </div>
+
+      <h4>📥 Format</h4>
+
+      <label><input type="checkbox" class="format" value="pdf"> PDF</label>
+      <label><input type="checkbox" class="format" value="excel"> Excel</label>
+      <label><input type="checkbox" class="format" value="grafik"> Grafik</label>
+
+      <br><br>
+
+      <button onclick="generateLaporan(${k.id})">
+        ⬇️ Generate Laporan
+      </button>
+    `;
+
+    container.appendChild(div);
+  });
+}
+
+async function generateLaporan(kolamId) {
+
+  const start = document.getElementById(`lap-start-${kolamId}`).value;
+  const end = document.getElementById(`lap-end-${kolamId}`).value;
+
+  const selectedData = Array.from(
+    document.querySelectorAll(`#laporanContainer input[type=checkbox]:checked`)
+  ).map(c => c.value);
+
+  const selectedFormat = Array.from(
+    document.querySelectorAll(`#laporanContainer .format:checked`)
+  ).map(c => c.value);
+
+  if (selectedData.length === 0) {
+    showToast("Pilih data dulu!", "error");
+    return;
+  }
+
+  if (selectedFormat.length === 0) {
+    showToast("Pilih format!", "error");
+    return;
+  }
+
+  const res = await fetch(RECORDING_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  const data = rows.filter(r => {
+    const kid = Number(r[1]);
+    const tgl = r[2];
+
+    if (kid !== kolamId) return false;
+    if (start && tgl < start) return false;
+    if (end && tgl > end) return false;
+
+    return true;
+  });
+
+  const hasil = prosesLaporanLengkap(data);
+
+  // 🔥 EXPORT SESUAI PILIHAN
+  if (selectedFormat.includes("pdf")) exportPDF(hasil, kolamId);
+  if (selectedFormat.includes("excel")) exportExcel(hasil);
+  if (selectedFormat.includes("grafik")) exportGrafik(hasil);
+}
+
+function prosesLaporanLengkap(data) {
+
+  let hasil = {
+    tanggal: [],
+    suhu: [],
+    ph: [],
+    do: [],
+    kematian: [],
+    pakan: {},
+
+    totalPakan: 0,
+    totalMati: 0,
+    fcr: 0,
+    sr: 0,
+    mortalitas: 0,
+    efisiensi: 0
+  };
+
+  data.forEach(d => {
+
+    const tgl = d[2];
+    const jenis = (d[7] || "").trim().toUpperCase();
+    const jumlah = Number(d[8] || 0);
+    const mati = Number(d[6] || 0);
+
+    hasil.tanggal.push(tgl);
+    hasil.suhu.push(Number(d[3]));
+    hasil.ph.push(Number(d[4]));
+    hasil.do.push(Number(d[5]));
+    hasil.kematian.push(mati);
+
+    hasil.totalPakan += jumlah;
+    hasil.totalMati += mati;
+
+    if (!hasil.pakan[jenis]) {
+      hasil.pakan[jenis] = [];
+    }
+
+    hasil.pakan[jenis].push(jumlah);
+  });
+
+  // TOTAL PER JENIS
+  let totalPakanPerJenis = {};
+  Object.keys(hasil.pakan).forEach(j => {
+    totalPakanPerJenis[j] = hasil.pakan[j].reduce((a, b) => a + b, 0);
+  });
+
+  hasil.totalPakanPerJenis = totalPakanPerJenis;
+
+  // HITUNG
+  const kolam = kolamData.find(k => k.id == data[0]?.[1]);
+  const awal = kolam?.kapasitas || 0;
+  const hidup = awal - hasil.totalMati;
+
+  hasil.fcr = hasil.totalPakan / (hidup || 1);
+  hasil.sr = (hidup / (awal || 1)) * 100;
+  hasil.mortalitas = (hasil.totalMati / (awal || 1)) * 100;
+  hasil.efisiensi = 100 / (hasil.fcr || 1);
+
+  // RATA-RATA
+  const count = hasil.suhu.length || 1;
+
+  hasil.avg = {
+    suhu: hasil.suhu.reduce((a,b)=>a+b,0) / count,
+    ph: hasil.ph.reduce((a,b)=>a+b,0) / count,
+    do: hasil.do.reduce((a,b)=>a+b,0) / count,
+    kematian: hasil.kematian.reduce((a,b)=>a+b,0) / count
+  };
+
+  hasil.persen = {
+    suhu: (hasil.avg.suhu / 40) * 100,
+    ph: (hasil.avg.ph / 14) * 100,
+    do: (hasil.avg.do / 20) * 100,
+    kematian: (hasil.avg.kematian / 100) * 100
+  };
+
+  return hasil;
+}
+
+function exportPDF(data, kolamId) {
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const kolam = kolamData.find(k => k.id == kolamId);
+
+  let y = 20;
+
+  // HEADER
+  doc.setFontSize(16);
+  doc.text("LAPORAN BUDIDAYA IKAN", 20, y);
+
+  y += 8;
+  doc.setFontSize(10);
+  doc.text(`Kolam : ${kolam.nama}`, 20, y);
+
+  y += 10;
+
+  const jenisList = Object.keys(data.pakan);
+
+  // RINGKASAN
+ // =======================
+// 🔥 2 KOLOM (KIRI & KANAN)
+// =======================
+
+let yStart = y;
+
+// KOLOM
+const leftX = 20;
+const rightX = 110;
+
+// ===== KIRI: RINGKASAN =====
+doc.text("===== RINGKASAN =====", leftX, yStart);
+
+let yLeft = yStart + 6;
+
+doc.text(`FCR : ${data.fcr.toFixed(2)}`, leftX, yLeft);
+yLeft += 5;
+
+doc.text(`SR : ${data.sr.toFixed(2)} %`, leftX, yLeft);
+yLeft += 5;
+
+doc.text(`Mortalitas : ${data.mortalitas.toFixed(2)} %`, leftX, yLeft);
+yLeft += 5;
+
+doc.text(`Efisiensi : ${data.efisiensi.toFixed(2)} %`, leftX, yLeft);
+
+
+// ===== KANAN: RATA-RATA =====
+doc.text("===== RATA-RATA =====", rightX, yStart);
+
+let yRight = yStart + 6;
+
+// kolom kecil biar rapi
+const colVal = rightX + 35;
+const colPct = rightX + 65;
+
+// SUHU
+doc.text("Suhu", rightX, yRight);
+doc.text(data.avg.suhu.toFixed(2), colVal, yRight);
+doc.text(`(${data.persen.suhu.toFixed(1)}%)`, colPct, yRight);
+yRight += 5;
+
+// PH
+doc.text("PH", rightX, yRight);
+doc.text(data.avg.ph.toFixed(2), colVal, yRight);
+doc.text(`(${data.persen.ph.toFixed(1)}%)`, colPct, yRight);
+yRight += 5;
+
+// DO
+doc.text("DO", rightX, yRight);
+doc.text(data.avg.do.toFixed(2), colVal, yRight);
+doc.text(`(${data.persen.do.toFixed(1)}%)`, colPct, yRight);
+yRight += 5;
+
+// KEMATIAN
+doc.text("Kematian", rightX, yRight);
+doc.text(data.avg.kematian.toFixed(2), colVal, yRight);
+doc.text(`(${data.persen.kematian.toFixed(1)}%)`, colPct, yRight);
+
+
+// 🔥 LANJUTKAN Y KE BAWAH (BIAR TIDAK NIMPA TABEL)
+y = Math.max(yLeft, yRight) + 10;
+  // HEADER TABEL
+  doc.setFillColor(200, 230, 255);
+  doc.rect(10, y, 190, 8, "F");
+
+  doc.text("Tanggal", 12, y + 5);
+  doc.text("Suhu", 35, y + 5);
+  doc.text("PH", 55, y + 5);
+  doc.text("DO", 75, y + 5);
+  doc.text("Mati", 95, y + 5);
+
+  let xHeader = 115;
+
+  jenisList.forEach(j => {
+    doc.text(j, xHeader, y + 5);
+    xHeader += 20;
+  });
+
+  y += 10;
+
+  // ISI TABEL
+  data.tanggal.forEach((tgl, i) => {
+
+    if (y > 280) {
+      doc.addPage();
+      y = 20;
+    }
+
+    doc.text(tgl, 12, y);
+    doc.text(String(data.suhu[i]), 35, y);
+    doc.text(String(data.ph[i]), 55, y);
+    doc.text(String(data.do[i]), 75, y);
+    doc.text(String(data.kematian[i]), 95, y);
+
+    let xRow = 115;
+
+    jenisList.forEach(j => {
+      const val = data.pakan[j][i] || 0;
+      doc.text(`${(val/1000).toFixed(2)} KG`, xRow, y);
+      xRow += 20;
+    });
+
+    y += 6;
+  });
+
+  // TOTAL
+  y += 5;
+  doc.setFillColor(220, 240, 255);
+  doc.rect(10, y, 190, 8, "F");
+
+  doc.text("TOTAL", 12, y + 5);
+
+  let xTotal = 115;
+
+  jenisList.forEach(j => {
+    doc.text(
+      `${(data.totalPakanPerJenis[j] / 1000).toFixed(2)} KG`,
+      xTotal,
+      y + 5
+    );
+    xTotal += 20;
+  });
+
+  doc.save(`laporan_${kolam.nama}.pdf`);
+}
+
+function exportExcel(data) {
+
+  const rows = [];
+
+  const jenisList = Object.keys(data.pakan);
+
+  // =======================
+  // 🔥 HEADER
+  // =======================
+  rows.push([
+    "Tanggal",
+    "Suhu",
+    "PH",
+    "DO",
+    "Mati",
+    ...jenisList.map(j => j + " (KG)")
+  ]);
+
+  // =======================
+  // 🔥 DATA HARIAN
+  // =======================
+  data.tanggal.forEach((tgl, i) => {
+
+    let row = [
+      tgl,
+      data.suhu[i],
+      data.ph[i],
+      data.do[i],
+      data.kematian[i]
+    ];
+
+    jenisList.forEach(j => {
+      row.push((data.pakan[j][i] || 0) / 1000);
+    });
+
+    rows.push(row);
+  });
+
+  // =======================
+  // 🔥 TOTAL PAKAN
+  // =======================
+  let totalRow = ["TOTAL", "", "", "", ""];
+
+  jenisList.forEach(j => {
+    totalRow.push((data.totalPakanPerJenis[j] || 0) / 1000);
+  });
+
+  rows.push(totalRow);
+
+  // =======================
+  // 🔥 KOSONG (SPASI)
+  // =======================
+  rows.push([]);
+  rows.push([]);
+
+  // =======================
+  // 🔥 RINGKASAN (INI YANG KAMU MAU)
+  // =======================
+  rows.push(["RINGKASAN"]);
+  rows.push(["FCR", data.fcr]);
+  rows.push(["SR (%)", data.sr]);
+  rows.push(["Mortalitas (%)", data.mortalitas]);
+  rows.push(["Efisiensi (%)", data.efisiensi]);
+
+  // =======================
+  // 🔥 RATA-RATA
+  // =======================
+  rows.push([]);
+  rows.push(["RATA-RATA"]);
+  rows.push(["Suhu", data.avg.suhu, `${data.persen.suhu.toFixed(1)}%`]);
+  rows.push(["PH", data.avg.ph, `${data.persen.ph.toFixed(1)}%`]);
+  rows.push(["DO", data.avg.do, `${data.persen.do.toFixed(1)}%`]);
+  rows.push(["Kematian", data.avg.kematian, `${data.persen.kematian.toFixed(1)}%`]);
+
+  // =======================
+  // 🔥 EXPORT
+  // =======================
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(wb, ws, "Laporan");
+
+  XLSX.writeFile(wb, "laporan.xlsx");
+}
+
+async function exportGrafik(data) {
+
+  const zip = new JSZip();
+
+  function buatChart(config, namaFile) {
+    return new Promise(resolve => {
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 800;
+      canvas.height = 400;
+      document.body.appendChild(canvas);
+
+      const chart = new Chart(canvas, {
+        ...config,
+        plugins: [ChartDataLabels],
+        options: {
+          responsive: false,
+          animation: false,
+
+          plugins: {
+            legend: {
+              display: true,
+              position: "bottom"
+            },
+
+            title: {
+              display: true,
+              text: namaFile
+            },
+
+            subtitle: {
+              display: true,
+              text: "Data hasil monitoring kolam",
+              position: "bottom"
+            },
+
+            datalabels: {
+              color: "#000",
+              anchor: "end",
+              align: "top",
+              font: {
+                weight: "bold",
+                size: 10
+              },
+              formatter: (value) => value
+            }
+          },
+
+          scales: config.type !== "pie" ? {
+            y: {
+              beginAtZero: true
+            }
+          } : {}
+        }
+      });
+
+      setTimeout(() => {
+        const base64 = canvas.toDataURL("image/png").split(",")[1];
+        zip.file(`${namaFile}.png`, base64, { base64: true });
+
+        chart.destroy();
+        canvas.remove();
+
+        resolve();
+      }, 1200);
+    });
+  }
+
+  const promises = [];
+
+  // =====================
+  // 🔥 SUHU
+  // =====================
+  promises.push(buatChart({
+    type: "line",
+    data: {
+      labels: data.tanggal,
+      datasets: [{
+        label: "Suhu",
+        data: data.suhu,
+        pointRadius: 4,
+        tension: 0.3
+      }]
+    }
+  }, "Grafik_Suhu"));
+
+  // =====================
+  // 🔥 PH
+  // =====================
+  promises.push(buatChart({
+    type: "line",
+    data: {
+      labels: data.tanggal,
+      datasets: [{
+        label: "PH",
+        data: data.ph,
+        pointRadius: 4,
+        tension: 0.3
+      }]
+    }
+  }, "Grafik_PH"));
+
+  // =====================
+  // 🔥 DO
+  // =====================
+  promises.push(buatChart({
+    type: "line",
+    data: {
+      labels: data.tanggal,
+      datasets: [{
+        label: "DO",
+        data: data.do,
+        pointRadius: 4,
+        tension: 0.3
+      }]
+    }
+  }, "Grafik_DO"));
+
+  // =====================
+  // 🔥 KEMATIAN
+  // =====================
+  promises.push(buatChart({
+    type: "bar",
+    data: {
+      labels: data.tanggal,
+      datasets: [{
+        label: "Kematian",
+        data: data.kematian
+      }]
+    }
+  }, "Grafik_Kematian"));
+
+ // =====================
+// 🔥 PIE CHART PAKAN (FINAL FIX)
+// =====================
+const jenisList = Object.keys(data.totalPakanPerJenis);
+
+promises.push(new Promise(resolve => {
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 600;
+  canvas.height = 600;
+  document.body.appendChild(canvas);
+
+  const filtered = jenisList
+    .map(j => ({
+      label: j,
+      value: data.totalPakanPerJenis[j] / 1000
+    }))
+    .filter(d => d.value > 0);
+
+  if (filtered.length === 0) {
+    canvas.remove();
+    resolve();
+    return;
+  }
+
+  const labels = filtered.map(d => d.label);
+  const values = filtered.map(d => d.value);
+
+  const total = values.reduce((a,b)=>a+b,0);
+
+  const chart = new Chart(canvas, {
+    type: "pie",
+    data: {
+      labels: labels.map((l,i) => {
+        const val = values[i];
+        const persen = ((val/total)*100).toFixed(1);
+        return `${l} (${val.toFixed(2)} KG | ${persen}%)`;
+      }),
+      datasets: [{
+        data: values,
+        backgroundColor: [
+          "#36A2EB",
+          "#FF6384",
+          "#4BC0C0",
+          "#FFCE56",
+          "#9966FF"
+        ],
+        borderWidth: 2
+      }]
+    },
+
+    // ❗ HAPUS plugin datalabels DI SINI
+    options: {
+      responsive: false,
+      maintainAspectRatio: false,
+      layout: {
+        padding: 40
+      },
+      plugins: {
+        legend: {
+          position: "bottom"
+        },
+        title: {
+          display: true,
+          text: "Grafik Pakan"
+        }
+      }
+    }
+  });
+
+  setTimeout(() => {
+
+    const base64 = canvas.toDataURL("image/png").split(",")[1];
+    zip.file("Grafik_Pakan.png", base64, { base64: true });
+
+    chart.destroy();
+    canvas.remove();
+
+    resolve();
+
+  }, 1200);
+
+}));
+
+  // =====================
+  // 🔥 RINGKASAN
+  // =====================
+  promises.push(buatChart({
+    type: "bar",
+    data: {
+      labels: ["FCR", "SR", "Mortalitas", "Efisiensi"],
+      datasets: [{
+        label: "Ringkasan",
+        data: [
+          data.fcr,
+          data.sr,
+          data.mortalitas,
+          data.efisiensi
+        ]
+      }]
+    }
+  }, "Grafik_Ringkasan"));
+
+  // =====================
+  // 🔥 PROSES ZIP
+  // =====================
+  await Promise.all(promises);
+
+  zip.generateAsync({ type: "blob" }).then(content => {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(content);
+    link.download = "grafik_laporan.zip";
+    link.click();
+  });
+}
+
+function logout() {
+  const auth = getAuth();
+
+  signOut(auth).then(() => {
+    window.location.href = "./index.html";
+  });
+}
+
+function applyRoleUI() {
+  
+  const btnTambahKolam = document.getElementById("btnTambahKolam");
+
+if (currentRole === "operator" && btnTambahKolam) {
+  btnTambahKolam.style.display = "none";
+}
+
+  const menuItems = document.querySelectorAll(".sidebar li");
+
+  menuItems.forEach(item => {
+
+    const section = item.getAttribute("data-section");
+
+    if (currentRole === "operator") {
+
+      if (section !== "dashboard" && section !== "recording") {
+        item.style.display = "none";
+      }
+
+    }
+
+  });
+
+}
+let globalData = [];
+
+async function loadDashboardUtama() { 
+
+  await loadSampling(); // 🔥 WAJIB
+
+  const res = await fetch(RECORDING_CSV);
+  const text = await res.text();
+
+  const rows = text.trim().split("\n").map(r =>
+    r.replace(/"/g, "").split(",")
+  );
+
+  rows.shift();
+
+  const grouped = {};
+  let globalData = []; // 🔥 TAMBAHAN
+
+  rows.forEach(r => {
+
+    const kolamId = Number(r[1]);
+    const tanggal = r[2];
+
+    const filter = filterState[kolamId];
+
+    if (globalFilter.start && globalFilter.end) {
+  if (tanggal < globalFilter.start || tanggal > globalFilter.end) return;
+}
+
+    // 🔹 FILTER PER KOLAM
+    if (filter) {
+      if (tanggal < filter.start || tanggal > filter.end) return;
+    }
+
+    // 🔹 FILTER GLOBAL
+    if (globalFilter.start && globalFilter.end) {
+      if (tanggal < globalFilter.start || tanggal > globalFilter.end) return;
+    }
+
+    if (!grouped[kolamId]) grouped[kolamId] = [];
+
+    const obj = {
+      tanggal: tanggal,
+  pakan: isNaN(Number(r[8])) ? 0 : Number(r[8]),
+  mati: isNaN(Number(r[6])) ? 0 : Number(r[6]),
+  suhu: isNaN(Number(r[5])) ? 0 : Number(r[5]),
+  ph: isNaN(Number(r[9])) ? 0 : Number(r[9]),
+  do: isNaN(Number(r[10])) ? 0 : Number(r[10]),
+  bobot: Number(r[11] || 0),
+  jenis: (r[7] || "").trim()
+    };
+
+    grouped[kolamId].push(obj);
+    globalData.push(obj); // 🔥 TAMBAHAN
+  });
+
+  // 🔥 RENDER MASTER DATA
+  renderMasterData(globalData);
+
+  // 🔥 RENDER PER KOLAM
+  renderDashboardUtama(grouped, rows);
+}
+
+  function safeDivide(a, b) {
+  if (!b || b === 0) return 0;
+  return a / b;
+}
+
+function hitungDashboardMetrics(data, k) {
+
+  let totalPakan = 0;
+  let totalMati = 0;
+
+  data.forEach(d => {
+    totalPakan += d.pakan || 0;
+    totalMati += d.mati || 0;
+  });
+
+  const awal = k.kapasitas || 0;
+  const akhir = k.populasi || 0;
+
+  // 🔥 AMBIL SAMPLING (SAMA PERSIS LAB)
+  const sampling = getSamplingAktif(k.id);
+
+  let biomassa = 0;
+
+// 🔥 pakai sampling jika ada
+if (sampling && sampling.berat > 0) {
+  biomassa = akhir * sampling.berat;
+}
+
+// 🔥 fallback jika tidak ada sampling
+if (biomassa === 0 && akhir > 0) {
+  biomassa = akhir * 0.02; // asumsi 20 gram/ekor
+}
+
+  // 🔥 RUMUS IDENTIK LAB
+  const SR = awal > 0 ? (akhir / awal) * 100 : 0;
+
+  const mortalitas = awal > 0
+    ? (totalMati / awal) * 100
+    : 0;
+
+  const FCR = (biomassa > 0 && totalPakan > 0)
+    ? totalPakan / biomassa
+    : 0;
+
+  const efisiensi = FCR > 0
+    ? (1 / FCR) * 100
+    : 0;
+
+  return {
+    FCR,
+    SR,
+    mortalitas,
+    efisiensi
+  };
+}
+function renderDashboardUtama(grouped, rows) {
+  
+
+  const container = document.getElementById("dashboardContainer");
+  container.innerHTML = "";
+
+  kolamData.forEach(k => {
+    //if (!searchKeyword) return; // 🔥 sembunyikan semua jika kosong
+
+if (searchKeyword && !k.nama.toLowerCase().includes(searchKeyword)) return;
+
+    if (!datasetVisibility[k.id]) {
+  datasetVisibility[k.id] = {
+    pakan: true,
+    mati: true,
+    suhu: true,
+    fcr: true,
+    sr: true,
+    mortalitas: true
+  };
+}
+
+    const data = grouped[k.id] || [];
+
+    const half = Math.floor(data.length / 2);
+
+const dataSekarang = data.slice(half);
+const dataSebelumnya = data.slice(0, half);
+
+const mSekarang = hitungDashboardMetrics(dataSekarang, k);
+const mSebelumnya = hitungDashboardMetrics(dataSebelumnya, k);
+
+const trendFCR = hitungTrend(mSekarang.FCR, mSebelumnya.FCR);
+const trendSR = hitungTrend(mSekarang.SR, mSebelumnya.SR);
+const trendMortalitas = hitungTrend(mSekarang.mortalitas, mSebelumnya.mortalitas);
+const trendEfisiensi = hitungTrend(mSekarang.efisiensi, mSebelumnya.efisiensi);
+
+    // 🔥 HITUNG PAKAN PER JENIS
+    const pakanPerJenis = {};
+
+    data.forEach(d => {
+      const jenis = d.jenis || "Tidak diketahui";
+
+      if (!pakanPerJenis[jenis]) {
+        pakanPerJenis[jenis] = 0;
+      }
+
+      pakanPerJenis[jenis] += d.pakan;
+    });
+
+    // 🔥 HTML PAKAN
+    let htmlPakan = "";
+
+    Object.keys(pakanPerJenis).forEach(jenis => {
+      htmlPakan += `
+        <div class="pakan-item">
+          <span>${jenis}</span>
+          <strong>${(pakanPerJenis[jenis] / 1000).toFixed(2)} kg</strong>
+        </div>
+      `;
+    });
+
+    const div = document.createElement("div");
+    div.className = "kolam-box";
+
+    // 🔥 JIKA DATA KOSONG
+    if (data.length === 0) {
+
+      div.innerHTML = `
+        <h3>${k.nama}</h3>
+
+        <div class="filter-box">
+          <input type="date" id="startDash-${k.id}">
+          <input type="date" id="endDash-${k.id}">
+          <button onclick="applyFilterDash(${k.id})">Filter</button>
+          <button onclick="resetFilterDash(${k.id})">Reset</button>
+        </div>
+
+        <div class="pakan-section">
+          <h4>Penggunaan Pakan</h4>
+          ${htmlPakan || "<small>Tidak ada data pakan</small>"}
+        </div>
+
+        <p style="text-align:center; color:#999; margin-top:20px;">
+          Tidak ada data yang kamu cari
+        </p>
+      `;
+
+      container.appendChild(div);
+      return;
+    }
+
+    // 🔥 METRIK
+
+
+    div.innerHTML = `
+      <h3>${k.nama}</h3>
+
+      <div class="filter-box">
+        <input type="date" id="startDash-${k.id}">
+        <input type="date" id="endDash-${k.id}">
+        <button onclick="applyFilterDash(${k.id})">Filter</button>
+        <button onclick="resetFilterDash(${k.id})">Reset</button>
+      </div>
+<div class="filter-data-box">
+
+  <label><input type="checkbox"
+  ${datasetVisibility[k.id]?.pakan !== false ? "checked" : ""}
+  onchange="toggleDataset(${k.id}, 'pakan')"> Pakan</label>
+
+  <label><input type="checkbox" checked onchange="toggleDataset(${k.id}, 'mati')"> Kematian</label>
+
+  <label><input type="checkbox" checked onchange="toggleDataset(${k.id}, 'suhu')"> Suhu</label>
+
+  <label><input type="checkbox" checked onchange="toggleDataset(${k.id}, 'fcr')"> FCR</label>
+
+  <label><input type="checkbox" checked onchange="toggleDataset(${k.id}, 'sr')"> SR</label>
+
+  <label><input type="checkbox" checked onchange="toggleDataset(${k.id}, 'mortalitas')"> Mortalitas</label>
+
+</div>
+
+      <div class="chart-wrapper">
+        <canvas id="chart-${k.id}"></canvas>
+      </div>
+
+      <div class="data-grid">
+        <div class="data-box">
+  <small>FCR</small>
+  <strong>${mSekarang.FCR}</strong>
+  ${renderTrend(trendFCR)}
+</div>
+
+<div class="data-box">
+  <small>SR</small>
+  <strong>${mSekarang.SR}%</strong>
+  ${renderTrend(trendSR)}
+</div>
+
+<div class="data-box">
+  <small>Mortalitas</small>
+  <strong>${mSekarang.mortalitas}%</strong>
+  ${renderTrend(trendMortalitas)}
+</div>
+
+<div class="data-box">
+  <small>Efisiensi</small>
+  <strong>${mSekarang.efisiensi}%</strong>
+  ${renderTrend(trendEfisiensi)}
+</div>
+      </div>
+
+      <div class="pakan-section">
+        <h4>Penggunaan Pakan</h4>
+        ${htmlPakan}
+      </div>
+    `;
+
+    container.appendChild(div);
+
+    renderChart(k.id, data);
+  });
+}
+
+function renderChart(id, data) {
+
+  const vis = datasetVisibility[id] || {
+  pakan: true,
+  mati: true,
+  suhu: true,
+  fcr: true,
+  sr: true,
+  mortalitas: true
+};
+
+  const ctx = document.getElementById(`chart-${id}`);
+  if (!ctx) return;
+
+  if (ctx.chartInstance) {
+    ctx.chartInstance.destroy();
+  }
+
+  chartInstances[id] = new Chart(ctx, {
+    type: "line",
+
+    data: {
+      labels: data.map(d => d.tanggal),
+      datasets: [
+
+  vis.pakan && {
+    type: "line",
+    label: "Pakan",
+    data: data.map(d => d.pakan),
+    yAxisID: "y"
+  },
+
+  vis.mati && {
+    type: "line",
+    label: "Kematian",
+    data: data.map(d => d.mati),
+    yAxisID: "y"
+  },
+
+  vis.suhu && {
+    type: "line",
+    label: "Suhu",
+    data: data.map(d => d.suhu),
+    yAxisID: "y1"
+  },
+
+  vis.fcr && {
+    type: "line",
+    label: "FCR",
+    data: data.map(d => d.pakan && d.mati ? d.pakan / (d.mati || 1) : 0),
+    borderDash: [5, 5],
+    yAxisID: "y1"
+  },
+
+  vis.sr && {
+    type: "bar",
+    label: "SR",
+    data: data.map(d => d.mati ? 100 - d.mati : 100),
+    yAxisID: "y1"
+  },
+
+  vis.mortalitas && {
+    type: "bar",
+    label: "Mortalitas",
+    data: data.map(d => d.mati || 0),
+    yAxisID: "y1"
+  }
+
+].filter(Boolean)
+    },
+
+    // 🔥 INI HARUS DI DALAM CHART
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+
+      scales: {
+        y: {
+          type: "linear",
+          position: "left",
+          beginAtZero: true
+        },
+        y1: {
+          type: "linear",
+          position: "right",
+          beginAtZero: true,
+          grid: {
+            drawOnChartArea: false
+          }
+        }
+      }
+    }
+
+  });
+}
+
+function applyFilterDash(id) {
+
+  const start = document.getElementById(`startDash-${id}`).value;
+  const end = document.getElementById(`endDash-${id}`).value;
+
+  if (!start || !end) {
+    alert("Pilih tanggal dulu!");
+    return;
+  }
+
+  filterState[id] = { start, end };
+
+  loadDashboardUtama();
+}
+
+function resetFilterDash(id) {
+
+  delete filterState[id];
+
+  document.getElementById(`startDash-${id}`).value = "";
+  document.getElementById(`endDash-${id}`).value = "";
+
+  loadDashboardUtama();
+}
+function resetFilterDash(id) {
+
+  // 🔥 hapus filter
+  delete filterState[id];
+
+  // kosongkan input
+  document.getElementById(`startDash-${id}`).value = "";
+  document.getElementById(`endDash-${id}`).value = "";
+
+  loadDashboardUtama();
+}
+
+function toggleDataset(id, type) {
+
+  if (!datasetVisibility[id]) {
+    datasetVisibility[id] = {
+      pakan: true,
+      mati: true,
+      suhu: true,
+      fcr: true,
+      sr: true,
+      mortalitas: true
+    };
+  }
+
+  datasetVisibility[id][type] = !datasetVisibility[id][type];
+
+  updateChart(id); // 🔥 bukan reload
+}
+
+function updateChart(id) {
+
+  const chart = chartInstances[id];
+  if (!chart) return;
+
+  const vis = datasetVisibility[id];
+
+  chart.data.datasets.forEach(ds => {
+
+    if (ds.label === "Pakan") ds.hidden = !vis.pakan;
+    if (ds.label === "Kematian") ds.hidden = !vis.mati;
+    if (ds.label === "Suhu") ds.hidden = !vis.suhu;
+    if (ds.label === "FCR") ds.hidden = !vis.fcr;
+    if (ds.label === "SR") ds.hidden = !vis.sr;
+    if (ds.label === "Mortalitas") ds.hidden = !vis.mortalitas;
+
+  });
+
+  chart.update();
+}
+
+function hitungTrend(current, previous) {
+
+  if (!previous || previous === 0) {
+    return {
+      diff: current,
+      percent: 100,
+      arah: "naik"
+    };
+  }
+
+  const diff = current - previous;
+  const percent = (diff / previous) * 100;
+
+  return {
+    diff: diff,
+    percent: percent,
+    arah: diff >= 0 ? "naik" : "turun"
+  };
+}
+
+function renderTrend(trend) {
+
+  const arrow = trend.arah === "naik" ? "▲" : "▼";
+  const color = trend.arah === "naik" ? "green" : "red";
+
+  return `
+    <small style="color:${color}">
+      ${arrow} ${trend.diff.toFixed(2)} (${trend.percent.toFixed(1)}%)
+    </small>
+  `;
+}
+
+function handleSearchKolam() {
+
+  const input = document.getElementById("searchKolam");
+  searchKeyword = input.value.toLowerCase();
+
+  loadDashboardUtama();
+}
+
+function renderMasterData(data) {
+
+  return;
+
+  const container = document.getElementById("masterDataContainer");
+
+  if (!data || data.length === 0) {
+    container.innerHTML = "<p>Tidak ada data</p>";
+    return;
+  }
+
+  // 🔥 HITUNG TOTAL
+  let totalPakan = 0;
+  let totalMati = 0;
+  let totalSuhu = 0;
+  let totalPH = 0;
+  let totalDO = 0;
+
+  const pakanPerJenis = {};
+
+  data.forEach(d => {
+    totalPakan += d.pakan;
+    totalMati += d.mati;
+    totalSuhu += d.suhu;
+    totalPH += d.ph;
+    totalDO += d.do;
+
+    const jenis = d.jenis || "Tidak diketahui";
+
+    if (!pakanPerJenis[jenis]) pakanPerJenis[jenis] = 0;
+    pakanPerJenis[jenis] += d.pakan;
+  });
+
+  const avgSuhu = data.length ? totalSuhu / data.length : 0;
+const avgPH = data.length ? totalPH / data.length : 0;
+const avgDO = data.length ? totalDO / data.length : 0;
+
+  // 🔥 METRIK GLOBAL (pakai fungsi kamu)
+  const m = hitungLab(k.id, rows);
+
+  // 🔥 HTML PAKAN
+  let htmlPakan = "";
+  Object.keys(pakanPerJenis).forEach(j => {
+    htmlPakan += `
+      <div class="pakan-item">
+        <span>${j}</span>
+        <strong>${(pakanPerJenis[j] / 1000).toFixed(2)} kg</strong>
+      </div>
+    `;
+  });
+
+  container.innerHTML = `
+    <div class="kolam-box">
+
+      <h3>Master Data (Semua Kolam)</h3>
+
+      <!-- FILTER -->
+      <div class="filter-box">
+        <input type="date" id="globalStart">
+        <input type="date" id="globalEnd">
+        <button onclick="applyGlobalFilter()">Filter</button>
+        <button onclick="resetGlobalFilter()">Reset</button>
+      </div>
+
+      <!-- DATA GRID -->
+      <div class="data-grid">
+
+        <div class="data-box">
+          <small>Total Pakan</small>
+          <strong>${(totalPakan / 1000).toFixed(2)} kg</strong>
+        </div>
+
+        <div class="data-box">
+          <small>Total Kematian</small>
+          <strong>${totalMati}</strong>
+        </div>
+
+        <div class="data-box">
+          <small>Suhu</small>
+          <strong>${avgSuhu.toFixed(2)}</strong>
+        </div>
+
+        <div class="data-box">
+          <small>pH</small>
+          <strong>${avgPH.toFixed(2)}</strong>
+        </div>
+
+        <div class="data-box">
+          <small>DO</small>
+          <strong>${avgDO.toFixed(2)}</strong>
+        </div>
+
+        <div class="data-box">
+          <small>FCR</small>
+          <strong>${isFinite(m.FCR) ? m.FCR.toFixed(4) : "0.0000"}</strong>
+        </div>
+
+        <div class="data-box">
+          <small>SR</small>
+          <strong>${isFinite(m.SR) ? m.SR.toFixed(4) : "0.0000"}%</strong>
+        </div>
+
+        <div class="data-box">
+          <small>Mortalitas</small>
+          <strong>${isFinite(m.mortalitas) ? m.mortalitas.toFixed(4) : 0}%</strong>
+        </div>
+
+        <div class="data-box">
+          <small>Efisiensi</small>
+          <strong>${isFinite(m.efisiensi) ? m.efisiensi.toFixed(4) : 0}%</strong>
+        </div>
+
+      </div>
+
+      <!-- PAKAN -->
+      <div class="pakan-section">
+        <h4>Penggunaan Pakan</h4>
+        ${htmlPakan}
+      </div>
+
+    </div>
+  `;
+}
+
+let globalFilter = {};
+
+function applyGlobalFilter() {
+
+  const start = document.getElementById("globalStart").value;
+  const end = document.getElementById("globalEnd").value;
+
+  globalFilter = { start, end };
+
+  loadDashboardUtama();
+}
+
+function resetGlobalFilter() {
+
+  globalFilter = {};
+
+  document.getElementById("globalStart").value = "";
+  document.getElementById("globalEnd").value = "";
+
+  loadDashboardUtama();
+}
+
+
+
+
