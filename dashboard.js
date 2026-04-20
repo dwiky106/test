@@ -79,7 +79,7 @@ window.fetch = async (...args) => {
 // =======================
 // CONFIG
 // =======================
-const POST_URL = "https://script.google.com/macros/s/AKfycbyiI2siSr_RHO5DCdlmWPRdw03Hk6Re3sWxwbCWWpTx3ZI4H-9Rpl7iOZ_FzadFAdoj/exec";
+const POST_URL = "https://script.google.com/macros/s/AKfycbwzmh9_aSNgtwckO1xQF9lyi27rUVirHMGvnygBwMsav4Wsr1Vqe8QGutNQzGsHCNHs/exec";
 
 const KOLAM_CSV = "https://docs.google.com/spreadsheets/d/1nOsnlFTh00jCF-RbwXyH2IHFgg-SRrbKKo3_y5JZDto/gviz/tq?tqx=out:csv&sheet=kolam";
 
