@@ -32,18 +32,27 @@ const errorMsg = document.getElementById("errorMsg");
 form.addEventListener("submit", function(e) {
   e.preventDefault();
 
-  const userId = document.getElementById("userId").value;
-  const password = document.getElementById("password").value;
+  const userId = document.getElementById("userId").value.trim();
+  const password = document.getElementById("password").value.trim();
 
-  // 🔥 UBAH ID JADI EMAIL
-  const fakeEmail = userId + "@app.com";
+  let email = "";
+
+  // DETEKSI ROLE DARI INPUT
+  if (userId.startsWith("sfs.")) {
+    email = userId + "@ops.com";
+  } else {
+    email = userId + "@app.com";
+  }
+
+  console.log("LOGIN EMAIL:", email); // 🔥 debug
 
   // 🔥 LOGIN
-  signInWithEmailAndPassword(auth, fakeEmail, password)
+  signInWithEmailAndPassword(auth, email, password)
     .then(() => {
       window.location.href = "dashboard.html";
     })
-    .catch(() => {
+    .catch((err) => {
+      console.error(err.code);
       errorMsg.textContent = "ID atau password salah!";
     });
 });
